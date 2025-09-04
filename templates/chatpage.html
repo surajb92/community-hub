@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<title>Communication Hub</title>
+<script type="text/javascript">
+uname = "{{user}}"
+</script>
+<script src="{{ url_for('static', filename='js/myscript.js') }}"></script>
+{% endblock %}
+
+{% block body %}
+<div class="content">
+	<h1 style="text-align: center">Main Hub</h1>
+	{% if nodb %}
+	<div> No database found </div>
+	{% endif %}
+	<div id="container">
+		<ul class="chat-list" id="chat-list"></ul>
+	</div>
+	<div id="userchatbox">
+		<input type="text" placeholder="Enter message.." id="userchat" name="userchat" />
+		<button type="submit" id="send-btn" onclick="sendMessage()">Send</button>
+	</div>
+</div>
+{% endblock %}

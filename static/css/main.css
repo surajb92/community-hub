@@ -1,0 +1,82 @@
+body, html {
+	margin: 0;
+	font-family: sans-serif;
+	background-color: rgb(110, 161, 228);
+}
+
+.content {
+	margin:0 auto;
+	width: 80%;
+}
+
+table, th, td {
+	border: 1px solid #aaa;
+}
+
+table {
+	border-collapse: collapse;
+	width: 100%;
+}
+
+.chat-list {
+    resize: none;
+    width: 80vw;
+    height: 60vh;
+	overflow-y: auto;
+	border: 1px;
+	padding: 10px;
+}
+
+th {
+	height: 30px;
+}
+
+td {
+	text-align: center;
+	padding: 5px;
+}
+
+.form {
+	margin-top: 20px;
+}
+
+.content {
+	width: 70%;
+}
+
+.muted-text {
+  color: grey;
+  font-size: 0.7rem;
+}
+
+.muted-text-white {
+  color: white;
+  font-size: 0.7rem;
+}
+
+.member-activity {
+  text-align: center;
+  margin: 5px 0;
+  color: grey;
+}
+
+.message-item {
+  background-color: white;
+  border-radius: 10px;
+  padding: 2px;
+  width: fit-content;
+  max-width: 500px;
+  margin: 5px 0;
+}
+
+.self-message-item {
+  margin-left: auto;
+  margin-right: 0;
+  border-bottom-right-radius: 0;
+}
+
+.peer-message-item {
+  background-color: rgb(0, 100, 140);
+  color: white;
+  border-bottom-left-radius: 0;
+}

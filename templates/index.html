@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<title>Username</title>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+{% endblock %}
+
+{% block body %}
+<div class="content">
+	<h1 style="text-align: center">Enter Username</h1>
+	<form method="POST" id="username">
+		<input type="text" placeholder="Enter your username.." id="uname" name="uname" />
+		<button type="submit" id="send-btn">Enter</button>
+	</form>
+</div>
+{% endblock %}
