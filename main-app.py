@@ -6,6 +6,10 @@ from flask_socketio import SocketIO, join_room, leave_room, send, emit
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 
+
+app = Flask(__name__)
+socketio = SocketIO(app)
+
 if load_dotenv():
     db_exists = True
 
@@ -14,16 +18,13 @@ if load_dotenv():
     DB_NAME = os.environ.get("DB_NAME")
     DB_USER = os.environ.get("DB_USER")
     DB_PASS = os.environ.get("DB_PASS")
+    app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
 else:
     db_exists = False
+    app.config["SECRET_KEY"] = "mysecret"
 
 # NOTE : These files are loaded from .env file, which will not be on github
 # You can use your own DB for storing data, or run the app locally without storage functionality
-
-app = Flask(__name__)
-#app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
-app.config["SECRET_KEY"] = "mysecret"
-socketio = SocketIO(app)
 
 def getdbcon():
     conn = psycopg.connect(host=DB_HOST, dbname=DB_NAME, user=DB_USER, password=DB_PASS)

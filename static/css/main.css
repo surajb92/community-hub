@@ -1,7 +1,8 @@
 body, html {
 	margin: 0;
 	font-family: sans-serif;
-	background-color: rgb(110, 161, 228);
+	background-color: rgb(55, 55, 55);
+  color: white;
 }
 
 .content {
@@ -9,31 +10,14 @@ body, html {
 	width: 80%;
 }
 
-table, th, td {
-	border: 1px solid #aaa;
-}
-
-table {
-	border-collapse: collapse;
-	width: 100%;
-}
-
 .chat-list {
-    resize: none;
-    width: 80vw;
-    height: 60vh;
-	overflow-y: auto;
-	border: 1px;
-	padding: 10px;
-}
-
-th {
-	height: 30px;
-}
-
-td {
-	text-align: center;
-	padding: 5px;
+  color:black;
+  resize: none;
+  width: 80vw;
+  height: 60vh;
+  overflow-y: auto;
+  border: 1px;
+  padding: 10px;
 }
 
 .form {
@@ -63,7 +47,7 @@ td {
 .message-item {
   background-color: white;
   border-radius: 10px;
-  padding: 2px;
+  padding: 5px;
   width: fit-content;
   max-width: 500px;
   margin: 5px 0;
@@ -79,4 +63,12 @@ td {
   background-color: rgb(0, 100, 140);
   color: white;
   border-bottom-left-radius: 0;
+}
+
+.user-text {
+  color: rgb(13, 150, 255);
+}
+
+.peer-text {
+  color: rgb(255, 144, 40);
 }
