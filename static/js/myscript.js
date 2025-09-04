@@ -14,13 +14,14 @@ function createChatItem(message, sender) {
     } else {
         var usersend = uname === sender;
         var content = `
-        <li class="message-item ${usersend ? "self-message-item" : "peer-message-item"}">
+        <div class="message-item ${usersend ? "self-message-item" : "peer-message-item"}">
         <small class="${usersend ? "user-text" : "peer-text"}">${sender}</small>
         <div>${message}</div>
         <small class="${usersend ? "muted-text" : "muted-text-white"}">${new Date().toLocaleString()}</small>
-        </li>`
+        </div>`
     ;}
     chat_list.innerHTML += content;
+    chat_list.scrollIntoView({ behavior: 'smooth', block: 'end' })
 }
 function sendMessage() {
     var userchat = document.getElementById("userchat");

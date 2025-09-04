@@ -6,22 +6,18 @@ from flask_socketio import SocketIO, join_room, leave_room, send, emit
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 
-
 app = Flask(__name__)
 socketio = SocketIO(app)
 
 if load_dotenv():
-    db_exists = True
-
     # POSTGRESQL Database configuration
-    DB_HOST = os.environ.get("DB_HOST")
-    DB_NAME = os.environ.get("DB_NAME")
-    DB_USER = os.environ.get("DB_USER")
-    DB_PASS = os.environ.get("DB_PASS")
-    app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    db = SQLAlchemy(app)
 else:
-    db_exists = False
-    app.config["SECRET_KEY"] = "mysecret"
+    db = None
+    app.config['SECRET_KEY'] = 'mysecret'
 
 # NOTE : These files are loaded from .env file, which will not be on github
 # You can use your own DB for storing data, or run the app locally without storage functionality
@@ -29,6 +25,16 @@ else:
 def getdbcon():
     conn = psycopg.connect(host=DB_HOST, dbname=DB_NAME, user=DB_USER, password=DB_PASS)
     return conn
+
+if db:
+    class chat_msg(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        sender = db.Column(db.String(100), nullable=False)
+        message = db.Column(db.String(1000), nullable=False)
+        timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+def db_chat_store(sender,message):
+    pass
 
 @app.route('/', methods=["GET", "POST"])
 def home():
@@ -39,22 +45,17 @@ def home():
         if not uname:
             return render_template('home.html', error="Name is required")
         session['uname'] = uname
-        #session['uname'] = "guest0"
         return redirect(url_for('chatroom'))
     else:
-        return render_template("index.html")
+        return render_template('index.html')
 
 @app.route('/room')
 def chatroom():
     room = session.get('room')
     uname = session.get('uname')
-    if db_exists:
-        conn = getdbcon()
-        cur = conn.cursor()
-
-        cur.close()
-        conn.close()
-        return render_template("chatpage.html",user=uname,nodb=False)
+    if db:
+        chatlog = chat_msg.query.all()
+        return render_template("chatpage.html",user=uname,nodb=False,chats=chatlog)
     else:
         # Working without DB
         return render_template("chatpage.html",user=uname,nodb=True)
@@ -67,10 +68,6 @@ def handle_connect():
     if uname is None or room is None:
         return
     join_room(room)
-    #send({
-    #    "sender": "",
-    #    "message": f"{uname} has entered the chat"
-    #}, to=room)
     emit('sendmsg',
         {
             "sender": "",
@@ -89,8 +86,16 @@ def handle_message(payload):
         "message": payload["message"]
     }
     emit('sendmsg', msg, to=room)
+    if db:
+        newmsg = chat_msg(sender=uname,message=payload["message"],timestamp=datetime.now())
+        db.session.add(newmsg)
+        db.session.commit()
+    #db_chat_store(uname,payload["message"])
 
 if __name__ == "__main__":
+    if db:
+        with app.app_context():
+            db.create_all()
     socketio.run(app, host="0.0.0.0", debug=True)
     #socketio.run(app, debug=True)
     #app.run(debug=True)
