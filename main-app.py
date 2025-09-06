@@ -1,5 +1,7 @@
 import os
 import psycopg
+import random
+from string import ascii_letters
 from dotenv import load_dotenv, find_dotenv
 from flask import Flask, jsonify, render_template, redirect, request, session, url_for
 from flask_socketio import SocketIO, join_room, leave_room, send, emit
@@ -17,14 +19,11 @@ if load_dotenv():
     db = SQLAlchemy(app)
 else:
     db = None
-    app.config['SECRET_KEY'] = 'mysecret'
 
-# NOTE : These files are loaded from .env file, which will not be on github
-# You can use your own DB for storing data, or run the app locally without storage functionality
+# NOTE : These variables are loaded from .env file, which will not be on github
+# You can use your own DB for storing data.
 
-def getdbcon():
-    conn = psycopg.connect(host=DB_HOST, dbname=DB_NAME, user=DB_USER, password=DB_PASS)
-    return conn
+guests = []
 
 if db:
     class chat_msg(db.Model):
@@ -36,29 +35,42 @@ if db:
 def db_chat_store(sender,message):
     pass
 
+@app.before_request
+def checkdb():
+    if request.path.startswith('/static/'):
+        return
+    if not db:
+        return render_template('nodb.html')
+
 @app.route('/', methods=["GET", "POST"])
 def home():
-    session.clear()
-    session['room'] = "room0"
+    uname = session.get('uname')
     if request.method == "POST":
-        uname = request.form.get('uname')
-        if not uname:
-            return render_template('home.html', error="Name is required")
-        session['uname'] = uname
+        #uname = request.form.get('uname')
+        #if not uname:
+        #    return render_template('home.html', error="Name is required")
+        #session['uname'] = uname
+        session['room'] = "room0"
         return redirect(url_for('chatroom'))
     else:
-        return render_template('index.html')
+        if not uname:
+            while True:
+                r = [random.choice(ascii_letters) for _ in range(5)]
+                rs = ''.join(r)
+                gname = 'guest-'+rs
+                print(gname)
+                if gname not in guests:
+                    uname = gname
+                    session['uname'] = uname
+                    break
+        return render_template('index.html',user=uname)    
 
 @app.route('/room')
 def chatroom():
     room = session.get('room')
     uname = session.get('uname')
-    if db:
-        chatlog = chat_msg.query.all()
-        return render_template("chatpage.html",user=uname,nodb=False,chats=chatlog)
-    else:
-        # Working without DB
-        return render_template("chatpage.html",user=uname,nodb=True)
+    chatlog = chat_msg.query.all()
+    return render_template("chatpage.html",user=uname,chats=chatlog)
 
 # Socket handlers
 @socketio.on('connect')

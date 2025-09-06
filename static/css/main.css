@@ -10,6 +10,17 @@ body, html {
 	width: 80%;
 }
 
+.unselectable {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+.centered {
+  text-align: center;
+}
+
 .chat-list {
   color:black;
   resize: none;
@@ -18,6 +29,7 @@ body, html {
   overflow-y: auto;
   border: 1px;
   padding: 10px;
+  scroll-behavior: smooth;
 }
 
 .form {

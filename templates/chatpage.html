@@ -11,28 +11,23 @@ uname = "{{user}}"
 {% block body %}
 <div class="content">
 	<h1 style="text-align: center">Main Hub</h1>
-	{% if nodb %}
-	<div> No database found </div>
-	{% endif %}
 	<div id="container">
 		<ul class="chat-list" id="chat-list">
-		{% if not nodb %}
-			{% for m in chats %}
-				{% if m.sender == user %}
-				<div class="message-item self-message-item">
-					<small class="user-text">{{user}}</small>
-					<div>{{ m.message }}</div>
-					<small class="muted-text">{{ m.timestamp.strftime("%d-%m-%Y %H:%M") }}</small>
-				</div>
-				{% else %}
-				<div class="message-item peer-message-item">
-					<small class="peer-text">{{user}}</small>
-					<div>{{ m.message }}</div>
-					<small class="muted-text-white">{{ m.timestamp.strftime("%d-%m-%Y %H:%M") }}</small>
-				</div>
-				{% endif %}
-			{% endfor %}
-		{% endif %}
+		{% for m in chats %}
+			{% if m.sender == user %}
+			<div class="message-item self-message-item">
+				<small class="user-text">{{user}}</small>
+				<div>{{ m.message }}</div>
+				<small class="muted-text">{{ m.timestamp.strftime("%d/%m/%Y, %l:%M:%S %p") }}</small>
+			</div>
+			{% else %}
+			<div class="message-item peer-message-item">
+				<small class="peer-text">{{m.sender}}</small>
+				<div>{{ m.message }}</div>
+				<small class="muted-text-white">{{ m.timestamp.strftime("%d/%m/%Y, %l:%M:%S %p") }}</small>
+			</div>
+			{% endif %}
+		{% endfor %}
 		</ul>
 	</div>
 	<div id="userchatbox">
