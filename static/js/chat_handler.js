@@ -7,6 +7,11 @@ document.addEventListener('keydown', function (event) {
     }
 });
 
+document.addEventListener('DOMContentLoaded', function(event) {
+    chat_list = document.getElementById('chat-list');
+    chat_list.scrollTop = chat_list.scrollHeight;
+});
+
 function createChatItem(message, sender) {
     var chat_list = document.getElementById("chat-list");
     var usersend = uname === sender;
@@ -22,7 +27,7 @@ function createChatItem(message, sender) {
     ;}
     chat_list.innerHTML += content;
     if (usersend) {
-        chat_list.scrollTop = chat_list.scrollHeight
+        chat_list.scrollTop = chat_list.scrollHeight;
     }
 }
 function sendMessage() {

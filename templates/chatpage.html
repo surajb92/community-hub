@@ -1,11 +1,19 @@
 {% extends 'base.html' %}
 
+{% block topbar %}
+{% if usertype == 'guest' %}
+<script src="{{ url_for('static', filename='js/login_handler.js') }}"></script>
+<button onclick=showLogin()>Login</button>
+{% endif %}
+{% endblock %}
+
 {% block head %}
 <title>Communication Hub</title>
 <script type="text/javascript">
-uname = "{{user}}"
+const uname = "{{user}}"
+// const room = "{{room}}"
 </script>
-<script src="{{ url_for('static', filename='js/myscript.js') }}"></script>
+<script src="{{ url_for('static', filename='js/chat_handler.js') }}"></script>
 {% endblock %}
 
 {% block body %}

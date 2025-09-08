@@ -1,8 +1,15 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<title>Username</title>
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<title>Welcome to the Community Hub</title>
+<!--script src="https://code.jquery.com/jquery-3.7.1.min.js"></script-->
+{% endblock %}
+
+{% block topbar %}
+{% if usertype == 'guest' %}
+<script src="{{ url_for('static', filename='js/login_handler.js') }}"></script>
+<button onclick=showLogin()>Login</button>
+{% endif %}
 {% endblock %}
 
 {% block body %}

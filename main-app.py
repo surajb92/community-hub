@@ -6,6 +6,7 @@ from dotenv import load_dotenv, find_dotenv
 from flask import Flask, jsonify, render_template, redirect, request, session, url_for
 from flask_socketio import SocketIO, join_room, leave_room, send, emit
 from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 
 app = Flask(__name__)
@@ -31,6 +32,11 @@ if db:
         sender = db.Column(db.String(100), nullable=False)
         message = db.Column(db.String(1000), nullable=False)
         timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    class user_list(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        username = db.Column(db.String(100), nullable=False)
+        password = db.Column(db.String(500), nullable=False)
 
 def db_chat_store(sender,message):
     pass
@@ -45,12 +51,9 @@ def checkdb():
 @app.route('/', methods=["GET", "POST"])
 def home():
     uname = session.get('uname')
+    utype = session.get('utype')
+    session['room'] = "room0"
     if request.method == "POST":
-        #uname = request.form.get('uname')
-        #if not uname:
-        #    return render_template('home.html', error="Name is required")
-        #session['uname'] = uname
-        session['room'] = "room0"
         return redirect(url_for('chatroom'))
     else:
         if not uname:
@@ -62,15 +65,35 @@ def home():
                 if gname not in guests:
                     uname = gname
                     session['uname'] = uname
+                    session['utype'] = 'guest'
+                    utype = 'guest'
                     break
-        return render_template('index.html',user=uname)    
+        return render_template('index.html',user=uname,usertype=utype)
+
+@app.route('/register', methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        """u = request.form.get('username')
+        p1 = request.form.get('password')
+        p2 = request.form.get('password2')
+        newuser = user_list(sender=uname,message=payload["message"],timestamp=datetime.now())
+        db.session.add(newmsg)
+        db.session.commit()
+        session['uname'] = u
+        session['utype'] = 'registered'
+        return redirect(url_for('home'))"""
+        return "Success!"
+    return render_template('register.html')
 
 @app.route('/room')
 def chatroom():
     room = session.get('room')
     uname = session.get('uname')
+    utype = session.get('utype')
+    if not uname:
+        return redirect(url_for('home'))
     chatlog = chat_msg.query.all()
-    return render_template("chatpage.html",user=uname,chats=chatlog)
+    return render_template("chatpage.html",user=uname,usertype=utype,room=room,chats=chatlog)
 
 # Socket handlers
 @socketio.on('connect')
