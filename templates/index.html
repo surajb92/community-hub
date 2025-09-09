@@ -1,10 +1,5 @@
 {% extends 'base.html' %}
 
-{% block head %}
-<title>Welcome to the Community Hub</title>
-<!--script src="https://code.jquery.com/jquery-3.7.1.min.js"></script-->
-{% endblock %}
-
 {% block topbar %}
 {% if usertype == 'guest' %}
 <script src="{{ url_for('static', filename='js/login_handler.js') }}"></script>
@@ -12,11 +7,32 @@
 {% endif %}
 {% endblock %}
 
+{% block head %}
+<div id="login1-overlay" class="login-overlay"></div>
+<div id="login1-popup" class="login-popup">
+	<form method="POST" id="login-form">
+		{{ loginform.csrf_token }}
+		{{ loginform.username.label }}<br>
+		{{ loginform.username() }}<br>
+		{{ loginform.password.label }}<br>
+		{{ loginform.password() }}
+		<br><br>
+		{{ loginform.login_submit() }}
+		<!--input type="text" id="username" name="username"><br>
+		<label for="password">Password:</label><br>
+		<input type="password" id="password" name="password"><br>
+		<button type="submit" name="login-btn">Login</button-->
+		<button type="button" id="register" onclick="window.location.href='/register';">Register</button>
+	</form>
+</div>
+<title>Welcome to the Community Hub</title>
+{% endblock %}
+
 {% block body %}
 <div class="content">
 	<h1 class="centered">Welcome, {{ user }}</h1>
 	<form method="POST">
-		<button type="submit">Enter room</button>
+		<button type="submit" name="room-btn">Enter room</button>
 	</form>
 	<!--h1 style="text-align: center">Enter Username</h1-->
 	<!--form method="POST" id="username">

@@ -17,6 +17,9 @@ function checkRegisterData() {
     } else if (p1.value != p2.value) {
         alert("Passwords don't match!")
         return false;
+    } else if (u.value.startsWith('guest-')) {
+        alert("Cannot use 'guest-' at the start of your username!");
+        return false;
     } else {
         return true;
     }
