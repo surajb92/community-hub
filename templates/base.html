@@ -8,12 +8,46 @@
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous"></script>
 	<div class="topbar" id="topbar">
 		<div style="width: 10px;"></div>
+		{% if usertype == 'guest' %}
+		<button onclick=showLogin()>Login</button>
+		{% elif usertype == 'registered' %}
+		<button onclick="window.location.href='/logout'">Logout</button>
+		{% endif %}
 		{% block topbar %}{% endblock %}
 	</div>
+	{% if usertype == 'guest' %}
+		<div id="login-overlay" class="login-overlay"></div>
+		<div id="login-popup" class="login-popup">
+			<form method="POST" id="login-form">
+				{{ loginform.csrf_token }}
+				{{ loginform.username.label }}<br>
+				{{ loginform.username() }}<br>
+				{{ loginform.password.label }}<br>
+				{{ loginform.password() }}
+				<br>
+				{% if loginform.errors %}
+					<script>const lgn_errors = true;</script>
+					<div id="lerrors">
+					{% for error in loginform.username.errors %}
+						<span style="color: red;">{{ error }}</span><br>
+					{% endfor %}
+					</div>
+				{% endif %}
+				<br>
+				{{ loginform.login_submit }}
+				<!--input type="text" id="username" name="username"><br>
+				<label for="password">Password:</label><br>
+				<input type="password" id="password" name="password"><br>
+				<button type="submit" name="login-btn" onclick="handleLogin()">Login</button-->
+				<button type="button" id="register" onclick="window.location.href='/register';">Register</button>
+			</form>
+		</div>
+	{% endif %}
 	{% block head %}{% endblock %}
 </head>
 <body>
 	{% block body %}{% endblock %}
 	<!--script src="https://code.jquery.com/jquery-3.7.1.min.js"></script-->
+	<script src="{{ url_for('static', filename='js/login_handler.js') }}"></script>
 </body>
 </html>

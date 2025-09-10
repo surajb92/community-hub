@@ -6,12 +6,12 @@ from sys import exit
 from string import ascii_letters
 from dotenv import load_dotenv, find_dotenv
 
-from flask import Flask, jsonify, render_template, redirect, request, session, url_for
+from flask import Flask, flash, jsonify, render_template, redirect, request, session, url_for
 from flask_socketio import SocketIO, join_room, leave_room, send, emit
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, PasswordField
-from wtforms.validators import DataRequired
+from wtforms.validators import DataRequired, ValidationError
 
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
@@ -48,12 +48,13 @@ class login_form(FlaskForm):
     username = StringField('Username:',validators=[DataRequired()])
     password = PasswordField('Password:',validators=[DataRequired()])
     login_submit = SubmitField('Login')
-    #def validate_username(self,username):
-        #u = session.query(user_list).filter_by(username=username).first()
-        #if not u:
-        #    raise ValidationError("User does not exist")
-        #elif generate_password_hash(password) != u.password:
-        #    raise ValidationError("Wrong password")
+    def validate_username(self,username):
+        u = db.session.query(user_list).filter_by(username=username.data).first()
+        if not u:
+            raise ValidationError("Invalid credentials")
+        p = u.password
+        if not check_password_hash(p, self.password.data):
+            raise ValidationError("Invalid credentials")
 
 """ Keeping in case you need to check anything before processing request.
 @app.before_request
@@ -77,10 +78,12 @@ def home():
     if request.method == "POST":
         if 'room-btn' in request.form:
             return redirect(url_for('chatroom'))
-        elif lgn.validate_on_submit():
+        if lgn.validate_on_submit():
             session['uname'] = lgn.username.data
             session['utype'] = 'registered'
             return redirect(url_for('home'))
+        else:
+            return render_template('index.html',user=uname,usertype=utype,loginform=lgn)
     else:
         if not uname:
             while True:
@@ -110,15 +113,27 @@ def register():
         return redirect(url_for('home'))
     return render_template('register.html')
 
-@app.route('/room')
+@app.route('/logout')
+def logout():
+    del session['uname']
+    del session['utype']
+    return redirect(url_for('home'))
+
+@app.route('/room', methods=["GET", "POST"])
 def chatroom():
     room = session.get('room')
     uname = session.get('uname')
     utype = session.get('utype')
+    lgn = login_form()
     if not uname:
         return redirect(url_for('home'))
     chatlog = chat_msg.query.all()
-    return render_template("chatpage.html",user=uname,usertype=utype,room=room,chats=chatlog)
+    if request.method == "POST":
+        if lgn.validate_on_submit():
+            session['uname'] = lgn.username.data
+            session['utype'] = 'registered'
+            return redirect(url_for('chatroom'))
+    return render_template("chatpage.html",user=uname,usertype=utype,room=room,chats=chatlog,loginform=lgn)
 
 # ------------------------------
 #   Socket handlers
@@ -139,6 +154,10 @@ def handle_connect():
     )
     # rooms[room]["members"] += 1
 
+@socketio.on('login')
+def handle_login():
+    pass
+
 @socketio.on('message')
 def handle_message(payload):
     room = session.get('room')
@@ -148,10 +167,9 @@ def handle_message(payload):
         "message": payload["message"]
     }
     emit('sendmsg', msg, to=room)
-    if db:
-        newmsg = chat_msg(sender=uname,message=payload["message"],timestamp=datetime.now())
-        db.session.add(newmsg)
-        db.session.commit()
+    newmsg = chat_msg(sender=uname,message=payload["message"],timestamp=datetime.now())
+    db.session.add(newmsg)
+    db.session.commit()
 
 if __name__ == "__main__":
     with app.app_context():
