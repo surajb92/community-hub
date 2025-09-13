@@ -3,33 +3,25 @@
 {% block head %}
 <title>Communication Hub</title>
 <script type="text/javascript">
-const uname = "{{user}}"
-// const room = "{{room}}"
+const uname = "{{user}}";
+var room = "{{room}}";
+var init_chat = {{ chats | tojson }};
 </script>
 <script src="{{ url_for('static', filename='js/chat_handler.js') }}"></script>
 {% endblock %}
 
 {% block body %}
+<div style="display: flex; flex-direction: row; padding: 10px; margin: 10px;">
+	<button onclick="changeRoom('general')">General Room</button><br><br>
+	{% if usertype == 'registered' %}
+	<button onclick="changeRoom('weebchat')">Weeb Chat</button>
+	{% endif %}
+</div>
+<h1 style="text-align: center">Main Hub</h1>
 <div class="content">
-	<h1 style="text-align: center">Main Hub</h1>
-	<div id="container">
-		<ul class="chat-list" id="chat-list">
-		{% for m in chats %}
-			{% if m.sender == user %}
-			<div class="message-item self-message-item">
-				<small class="user-text">{{user}}</small>
-				<div>{{ m.message }}</div>
-				<small class="muted-text">{{ m.timestamp.strftime("%d/%m/%Y, %l:%M:%S %p") }}</small>
-			</div>
-			{% else %}
-			<div class="message-item peer-message-item">
-				<small class="peer-text">{{m.sender}}</small>
-				<div>{{ m.message }}</div>
-				<small class="muted-text-white">{{ m.timestamp.strftime("%d/%m/%Y, %l:%M:%S %p") }}</small>
-			</div>
-			{% endif %}
-		{% endfor %}
-		</ul>
+	<div class="chat-list" id="general">
+	</div>
+	<div class="chat-list" id="weebchat">
 	</div>
 	<div id="userchatbox">
 		<input type="text" placeholder="Enter message.." id="userchat" name="userchat" />

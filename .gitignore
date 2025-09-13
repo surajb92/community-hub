@@ -2,3 +2,4 @@ previously\ on\ dbz.txt
 .env
 .envv
 .vscode/*
+flask_session/*

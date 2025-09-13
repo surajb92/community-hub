@@ -60,6 +60,7 @@ body, html {
 }
 
 .chat-list {
+  display: none;
   color:black;
   resize: none;
   width: 80vw;
