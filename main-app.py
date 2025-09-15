@@ -178,6 +178,9 @@ def handle_connect():
 @socketio.on('changeroom')
 def handle_changeroom(payload):
     newroom = payload["newroom"]
+    utype = session['utype']
+    if newroom != 'general' and utype == 'guest': # Disallow guests from accessing rooms other than 'general'
+        return
     join_room(newroom)
     session['room'] = newroom
 
