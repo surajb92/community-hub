@@ -12,6 +12,8 @@ from flask_session import Session
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, PasswordField
 from wtforms.validators import DataRequired, ValidationError
@@ -23,6 +25,7 @@ app = Flask(__name__)
 app.config['SESSION_TYPE'] = 'filesystem'
 Session(app)
 socketio = SocketIO(app, manage_session=False)
+limiter = Limiter(get_remote_address, app, default_limits=['120 per minute'])
 
 if load_dotenv():
     # POSTGRESQL Database configuration
