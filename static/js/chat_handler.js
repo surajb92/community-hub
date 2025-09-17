@@ -1,5 +1,11 @@
 var socketio = io();
-socketio.on("sendmsg", function (message) { createChatItem(message.message, message.sender) });
+let cdtimer;
+socketio.on("sendmsg", function (chat) {
+    var chat_list = document.getElementById(room);
+    newchat = createChatElement(chat);
+    chat_list.appendChild(newchat);
+});
+// socketio.on("smg", )
 //socketio.on("roomchg", function (message) { createChatItem(message.message, message.sender) });
 
 document.addEventListener('DOMContentLoaded', function(event) {
@@ -7,13 +13,37 @@ document.addEventListener('DOMContentLoaded', function(event) {
     var chat_list = document.getElementById(room);
     chat_list.style.display = "block";
     populateChat(init_chat);
+    console.log("Cooldown check: ",cd)
+    startCooldown(cd)
 });
 
 document.addEventListener('keydown', function (event) {
-    if (event.key === "Enter" && document.getElementById('userchat') === document.activeElement) {
+    userchat = document.getElementById('userchat');
+    button = document.getElementById('send-btn');
+    if (event.key === "Enter" &&  userchat === document.activeElement && !button.disabled) {
         sendMessage();
     }
 });
+
+function startCooldown(cooldown) {
+    button = document.getElementById('send-btn');
+    if (cooldown <= 0) {
+        button.disabled = false;
+        button.innerHTML = "Send";
+        cd = -1;
+        return;
+    } else {
+        console.log(cooldown);
+        button.innerHTML = cooldown;
+        if (!button.disabled) {
+            button.disabled = true;
+        }
+        cooldown -= 1;
+        setTimeout(() => {
+            startCooldown(cooldown);
+        }, 1000);
+    }
+}
 
 function populateChat(chats) {
     var chat_list = document.getElementById(room);
@@ -29,7 +59,7 @@ function createChatElement(chat) {
     var sent_by_me = uname === chat.sender;
     
     const newchat = document.createElement('div');
-    newchat.className = 'message-item '
+    newchat.className = 'message-item ';
     newchat.className += sent_by_me ? 'self-message-item' : 'peer-message-item';
     const sndr = document.createElement('small');
     sndr.className = sent_by_me ? 'user-text' : 'peer-text';
@@ -57,7 +87,7 @@ function createChatElement(chat) {
     */
 }
 
-function createChatItem(message, sender) {
+function old_createChatItem(message, sender) {
     var chat_list = document.getElementById(room);
     var usersend = uname === sender;
     if (sender !== "") {
@@ -66,19 +96,27 @@ function createChatItem(message, sender) {
         <small class="${usersend ? "user-text" : "peer-text"}">${sender}</small>
         <div>${message}</div>
         <small class="${usersend ? "muted-text" : "muted-text-white"}">${new Date().toLocaleString('en-GB', {hour12: true}).replace(/am/i, "AM").replace(/pm/i, "PM")}</small>
-        </div>`
+        </div>`;
     ;}
     chat_list.innerHTML += content;
     if (usersend) {
         chat_list.scrollTop = chat_list.scrollHeight;
     }
 }
+
 function sendMessage() {
+    /*if (cd >= 0) {
+        return;
+    }*/
     var userchat = document.getElementById("userchat");
+    var chat_list = document.getElementById(room);
     if (userchat.value === "") return;
     var msg = userchat.value;
     socketio.emit("message", { message: msg });
     userchat.value = "";
+    chat_list.scrollTop = chat_list.scrollHeight;
+    if (utype == 'guest')
+        startCooldown(10);
 }
 
 function changeRoom(roomid) {
@@ -90,6 +128,8 @@ function changeRoom(roomid) {
     old_chat.style.display = "none";
     new_chat.style.display = "block";
     socketio.emit("changeroom", { newroom: roomid} );
+
+    // make this conditional
     fetch('/api/getchat')
         .then(response=> {
             if (!response.ok) {

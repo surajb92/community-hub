@@ -19,13 +19,13 @@ from wtforms import StringField, SubmitField, PasswordField
 from wtforms.validators import DataRequired, ValidationError
 
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 app.config['SESSION_TYPE'] = 'filesystem'
 Session(app)
 socketio = SocketIO(app, manage_session=False)
-limiter = Limiter(get_remote_address, app, default_limits=['120 per minute'])
+limiter = Limiter(key_func=get_remote_address, app=app, default_limits=['120 per minute'])
 
 if load_dotenv():
     # POSTGRESQL Database configuration
@@ -73,9 +73,11 @@ class login_form(FlaskForm):
 
 """ Keeping in case you need to check anything before processing request.
 @app.before_request
-def checkdb():
+def pre_processor():
     if request.path.startswith('/static/'):
         return
+    if request.path.startswith('api'):
+        return "Access denied" # This is a bit pointless as it will block fetch request from js as well
     if not db:
         return render_template('nodb.html')
 """
@@ -155,7 +157,7 @@ def chatroom():
             session['uname'] = lgn.username.data
             session['utype'] = 'registered'
             return redirect(url_for('chatroom'))
-    return render_template("chatpage.html",user=uname,usertype=utype,room=room,chats=chatlog,loginform=lgn)
+    return render_template("chatpage.html",user=uname,usertype=utype,room=room,chats=chatlog,cooldown=cdcheck(),loginform=lgn)
 
 @app.route('/api/getchat')
 def changeroom():
@@ -163,6 +165,33 @@ def changeroom():
     chschema = chatSchema(many=True)
     chatlog = chschema.dump(c)
     return jsonify(chatlog)
+
+def cdcheck():
+    last_ts = session.get('last_msg_ts')
+    if session.get('utype') != 'guest':
+        return -1
+    if last_ts:
+        return 10-(datetime.now() - last_ts).seconds
+    else:
+        return -1
+
+def cd___check():
+    last_ts = session.get('last_msg_ts')
+    utype = session.get('utype')
+    if not last_ts:
+        print("last timestamp does not exist")
+        return -1
+    elif utype != 'guest':
+        del session['last_msg_ts']
+        return -1
+    cdleft = (datetime.now() - last_ts).seconds
+    print("Last ts : ", last_ts, "Time now : ", datetime.now())
+    print("COOLDOWN CHECK : ",10-cdleft)
+    if cdleft < 10:
+        return 10-cdleft
+    else:
+        del session['last_msg_ts']
+        return -1
 
 # ------------------------------
 #   Socket handlers
@@ -191,12 +220,39 @@ def handle_changeroom(payload):
 def handle_message(payload):
     room = session.get('room')
     uname = session.get('uname')
+    utype = session.get('utype')
+    ts = datetime.now()
+    if utype == 'guest':
+        if session.get('last_msg_ts'):
+            if cdcheck() >= 0:
+                return
+            else:
+                session['last_msg_ts'] = ts
+        else:
+            session['last_msg_ts'] = ts
+    elif session.get('last_msg_ts'):
+        del session['last_msg_ts']
+    """
+        if utype == 'guest':
+        if cd_ts: # if -1, no cd or cdover
+            print('cd_ts exists')
+            if cdcheck(cd_ts) >= 0:
+                #print('deleting old cooldown ts')
+                #del session['last_msg_ts']
+            #else:
+                #print('cd is not over, disallow msg sending')
+                return
+        else:
+            print('cooldown does not exist, set new one')
+            session['last_msg_ts'] = ts
+    """
     msg = {
         "sender": uname,
-        "message": payload["message"]
+        "message": payload["message"],
+        "timestamp": ts.strftime("%Y-%m-%dT%H:%M:%S")
     }
     emit('sendmsg', msg, to=room)
-    newmsg = chat_msg(sender=uname,message=payload["message"],timestamp=datetime.now(),room=room)
+    newmsg = chat_msg(sender=uname,message=payload["message"],timestamp=ts,room=room)
     session['history'] += 1
     db.session.add(newmsg)
     db.session.commit()

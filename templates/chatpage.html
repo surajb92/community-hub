@@ -3,7 +3,9 @@
 {% block head %}
 <title>Communication Hub</title>
 <script type="text/javascript">
-const uname = "{{user}}";
+const uname = '{{user}}';
+const utype = '{{usertype}}';
+var cd = {{cooldown}}
 var room = "{{room}}";
 var init_chat = {{ chats | tojson }};
 </script>
