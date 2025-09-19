@@ -13,21 +13,21 @@ var init_chat = {{ chats | tojson }};
 {% endblock %}
 
 {% block body %}
-<div style="display: flex; flex-direction: row; padding: 10px; margin: 10px;">
-	<button onclick="changeRoom('general')">General Room</button><br><br>
-	{% if usertype == 'registered' %}
-	<button onclick="changeRoom('weebchat')">Weeb Chat</button>
-	{% endif %}
-</div>
-<h1 style="text-align: center">Main Hub</h1>
-<div class="content">
-	<div class="chat-list" id="general">
+<h1 id="chattitle" style="text-align: center">Main Hub</h1>
+<div style="display: flex; flex-direction: row;">
+	<div style="display: flex; flex-direction: column; padding: 10px; margin: 10px;">
+		<button class="room-button" onclick="changeRoom('general')">General Room</button><br><br>
+		{% if usertype == 'registered' %}
+		<button class="room-button" onclick="changeRoom('weebchat')">Anime | Manga | Manhwa etc.</button>
+		{% endif %}
 	</div>
-	<div class="chat-list" id="weebchat">
-	</div>
-	<div id="userchatbox">
-		<input type="text" placeholder="Enter message.." id="userchat" name="userchat" />
-		<button type="submit" id="send-btn" onclick="sendMessage()">Send</button>
+	<div style="display: flex; flex-direction: column;">
+		<div class="chat-list" id="general"></div>
+		<div class="chat-list" id="weebchat"></div>
+		<div id="userchatbox">
+			<input type="text" placeholder="Enter message.." id="userchat" name="userchat" />
+			<button type="submit" id="send-btn" onclick="sendMessage()">Send</button>
+		</div>
 	</div>
 </div>
 <script src="{{ url_for('static', filename='js/login_handler.js') }}"></script>

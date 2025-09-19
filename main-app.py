@@ -134,22 +134,17 @@ def logout():
 
 @app.route('/room', methods=["GET", "POST"])
 def chatroom():
-    CHAT_LIMIT = 70
     uname = session.get('uname')
     utype = session.get('utype')
     if not uname:
         return redirect(url_for('home'))
     lgn = login_form()
     room = session.get('room')
-    history = session.get('history')
-    if not history:
-        history = 50
-        session['history'] = 50
-    elif history > CHAT_LIMIT:
-        history = CHAT_LIMIT
-        session['history'] = CHAT_LIMIT
-    #c = chat_msg.query.filter_by(room=room).order_by(chat_msg.id.desc()).all()
-    c = chat_msg.query.filter_by(room=room).order_by(chat_msg.id.desc()).limit(history).all()
+    chatcount = session.get('chatcount')
+    if not chatcount:
+        session['chatcount'] = { room: 50 }
+        chatcount = session.get('chatcount')
+    c = chat_msg.query.filter_by(room=room).order_by(chat_msg.id.desc()).limit(chatcount.get(room)).all()
     chschema = chatSchema(many=True)
     chatlog = chschema.dump(c)
     if request.method == "POST":
@@ -160,10 +155,26 @@ def chatroom():
     return render_template("chatpage.html",user=uname,usertype=utype,room=room,chats=chatlog,cooldown=cdcheck(),loginform=lgn)
 
 @app.route('/api/getchat')
-def changeroom():
-    c = chat_msg.query.filter_by(room=session['room']).order_by(chat_msg.id.desc()).limit(session['history']).all()
+def getchat_roomchange():
+    room = session.get('room')
+    c = chat_msg.query.filter_by(room=room).order_by(chat_msg.id.desc()).limit(session.get('chatcount').get(room)).all()
     chschema = chatSchema(many=True)
     chatlog = chschema.dump(c)
+    return jsonify(chatlog)
+
+@app.route('/api/morechats')
+def getchat_scroll():
+    room = session.get('room')
+    chatcount = session.get('chatcount').get(room)
+    maxchats = chat_msg.query.filter_by(room=room).count()
+    if chatcount >= maxchats:
+        return jsonify([])
+    sendchats = 25 if maxchats-chatcount>=25 else maxchats-chatcount
+    print(chatcount,' ',maxchats,' ',sendchats)
+    c = chat_msg.query.filter_by(room=room).order_by(chat_msg.id.desc()).offset(chatcount).limit(sendchats).all()
+    chschema = chatSchema(many=True)
+    chatlog = chschema.dump(c)
+    session['chatcount'][room] += sendchats
     return jsonify(chatlog)
 
 def cdcheck():
@@ -173,24 +184,6 @@ def cdcheck():
     if last_ts:
         return 10-(datetime.now() - last_ts).seconds
     else:
-        return -1
-
-def cd___check():
-    last_ts = session.get('last_msg_ts')
-    utype = session.get('utype')
-    if not last_ts:
-        print("last timestamp does not exist")
-        return -1
-    elif utype != 'guest':
-        del session['last_msg_ts']
-        return -1
-    cdleft = (datetime.now() - last_ts).seconds
-    print("Last ts : ", last_ts, "Time now : ", datetime.now())
-    print("COOLDOWN CHECK : ",10-cdleft)
-    if cdleft < 10:
-        return 10-cdleft
-    else:
-        del session['last_msg_ts']
         return -1
 
 # ------------------------------
@@ -211,10 +204,13 @@ def handle_connect():
 def handle_changeroom(payload):
     newroom = payload["newroom"]
     utype = session['utype']
-    if newroom != 'general' and utype == 'guest': # Disallow guests from accessing rooms other than 'general'
+    if newroom != 'general' and utype == 'guest':
+        # Prevent guests from accessing rooms other than 'general'
         return
     join_room(newroom)
     session['room'] = newroom
+    if not session.get('chatcount').get(newroom):
+        session['chatcount'][newroom] = 50
 
 @socketio.on('message')
 def handle_message(payload):
@@ -232,20 +228,6 @@ def handle_message(payload):
             session['last_msg_ts'] = ts
     elif session.get('last_msg_ts'):
         del session['last_msg_ts']
-    """
-        if utype == 'guest':
-        if cd_ts: # if -1, no cd or cdover
-            print('cd_ts exists')
-            if cdcheck(cd_ts) >= 0:
-                #print('deleting old cooldown ts')
-                #del session['last_msg_ts']
-            #else:
-                #print('cd is not over, disallow msg sending')
-                return
-        else:
-            print('cooldown does not exist, set new one')
-            session['last_msg_ts'] = ts
-    """
     msg = {
         "sender": uname,
         "message": payload["message"],
@@ -253,7 +235,7 @@ def handle_message(payload):
     }
     emit('sendmsg', msg, to=room)
     newmsg = chat_msg(sender=uname,message=payload["message"],timestamp=ts,room=room)
-    session['history'] += 1
+    session['chatcount'][room] += 1
     db.session.add(newmsg)
     db.session.commit()
 

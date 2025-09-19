@@ -1,20 +1,31 @@
 var socketio = io();
-let cdtimer;
+var observer = new IntersectionObserver( (entries,observer) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+            loadMoreChats();
+        }
+    });
+}, {root:null, rootMargin:'0px', threshold:0.5});
+var loadbar = document.createElement('div');
+    loadbar.innerHTML = `
+        <div class="message-item" style="text-align: center; margin: auto;">Loading...</div>
+    `;
+
 socketio.on("sendmsg", function (chat) {
     var chat_list = document.getElementById(room);
     newchat = createChatElement(chat);
     chat_list.appendChild(newchat);
+    if (uname === chat.sender) {
+        chat_list.scrollTop = chat_list.scrollHeight;
+    }
 });
-// socketio.on("smg", )
-//socketio.on("roomchg", function (message) { createChatItem(message.message, message.sender) });
 
 document.addEventListener('DOMContentLoaded', function(event) {
-    // Populate chat here?
     var chat_list = document.getElementById(room);
     chat_list.style.display = "block";
     populateChat(init_chat);
-    console.log("Cooldown check: ",cd)
-    startCooldown(cd)
+    setTimeout(() => { observer.observe(loadbar) }, 1000);
+    startCooldown(cd);
 });
 
 document.addEventListener('keydown', function (event) {
@@ -33,7 +44,6 @@ function startCooldown(cooldown) {
         cd = -1;
         return;
     } else {
-        console.log(cooldown);
         button.innerHTML = cooldown;
         if (!button.disabled) {
             button.disabled = true;
@@ -45,14 +55,51 @@ function startCooldown(cooldown) {
     }
 }
 
-function populateChat(chats) {
+const obsFunction = (entries,observer) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+            var chat_list = entry.parentNode;
+            chat_list.removeChild(entry);
+            loadMoreChats();
+            chat_list.prepend(entry);
+        }
+    });
+}
+
+function loadMoreChats() {
+    fetch('/api/morechats')
+        .then(response=> {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(newchats => {
+            populateChat(newchats,false);
+        })
+        .catch(error => {
+            console.error('Error fetching data:', error);
+        });
+}
+
+function populateChat(chats, scrolldown=true) {
     var chat_list = document.getElementById(room);
+    if (loadbar.parentNode == chat_list)
+        chat_list.removeChild(loadbar);
+    h = chat_list.scrollHeight
     for (let c in chats) {
         t = createChatElement(chats[c]);
         chat_list.prepend(t);
     }
-    // This auto scrolls to front, can add functionality later if needed
-    chat_list.scrollTop = chat_list.scrollHeight;
+    // This auto smooth scrolls to the last chat, if 2nd argument is not given
+    if (scrolldown)
+        chat_list.lastChild.scrollIntoView( { behavior:'smooth' })
+    else {
+        chat_list.scrollTop = chat_list.scrollHeight - h
+        console.log(chat_list.scrollTop, chat_list.scrollHeight, h)
+    }
+    if (chats.length !== 0)
+        chat_list.prepend(loadbar);
 }
 
 function createChatElement(chat) {
@@ -75,46 +122,15 @@ function createChatElement(chat) {
     newchat.appendChild(ts);
 
     return newchat;
-
-    /*
-    var content = `
-    <div class="message-item ${sent_by_me ? "self-message-item" : "peer-message-item"}">
-    <small class="${sent_by_me ? "user-text" : "peer-text"}">${sender}</small>
-    <div>${message}</div>
-    <small class="${sent_by_me ? "muted-text" : "muted-text-white"}">${new Date().toLocaleString('en-GB', {hour12: true}).replace(/am/i, "AM").replace(/pm/i, "PM")}</small>
-    </div>`
-    return content;
-    */
-}
-
-function old_createChatItem(message, sender) {
-    var chat_list = document.getElementById(room);
-    var usersend = uname === sender;
-    if (sender !== "") {
-        var content = `
-        <div class="message-item ${usersend ? "self-message-item" : "peer-message-item"}">
-        <small class="${usersend ? "user-text" : "peer-text"}">${sender}</small>
-        <div>${message}</div>
-        <small class="${usersend ? "muted-text" : "muted-text-white"}">${new Date().toLocaleString('en-GB', {hour12: true}).replace(/am/i, "AM").replace(/pm/i, "PM")}</small>
-        </div>`;
-    ;}
-    chat_list.innerHTML += content;
-    if (usersend) {
-        chat_list.scrollTop = chat_list.scrollHeight;
-    }
 }
 
 function sendMessage() {
-    /*if (cd >= 0) {
-        return;
-    }*/
     var userchat = document.getElementById("userchat");
     var chat_list = document.getElementById(room);
     if (userchat.value === "") return;
     var msg = userchat.value;
     socketio.emit("message", { message: msg });
     userchat.value = "";
-    chat_list.scrollTop = chat_list.scrollHeight;
     if (utype == 'guest')
         startCooldown(10);
 }
@@ -128,20 +144,19 @@ function changeRoom(roomid) {
     old_chat.style.display = "none";
     new_chat.style.display = "block";
     socketio.emit("changeroom", { newroom: roomid} );
-
-    // make this conditional
-    fetch('/api/getchat')
-        .then(response=> {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(newchats => {
-            room = roomid;
-            populateChat(newchats);
-        })
-        .catch(error => {
-            console.error('Error fetching data:', error);
-        });
+    room = roomid;
+    if (!new_chat.hasChildNodes())
+        fetch('/api/getchat')
+            .then(response=> {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(newchats => {
+                populateChat(newchats);
+            })
+            .catch(error => {
+                console.error('Error fetching data:', error);
+            });
 }
