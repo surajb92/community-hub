@@ -1,18 +1,18 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<title>Register</title>
+<title>Registration</title>
 {% endblock %}
 
 {% block body %}
-<div class="content">
+<div>
 	<h1 style="text-align: center">Register an account!</h1>
 	<form method="POST" id="registrar" class="register-box" onsubmit="return checkRegisterData()">
 		<input type="text" placeholder="Enter your username.." name="username" id="username" maxlength="50" required/><br>
 		<input type="password" placeholder="Enter your password.." name="password" id="password" maxlength="50" required/>
 		<label><input type="checkbox" id="showpass" autocomplete="off" onclick=togglePass()>Show</label><br>
 		<input type="password" placeholder="Repeat your password.." name="password2" id="password2" maxlength="50" required/><br>
-		<button type="submit" id="send-btn">Register</button>
+		<div style="margin-left: 16vw;"><button type="submit" id="send-btn">Register</button></div>
 	</form>
 </div>
 <script src="{{ url_for('static', filename='js/register_handler.js') }}"></script>

@@ -58,6 +58,7 @@ class user_list(db.Model):
     password = db.Column(db.String(500), nullable=False)
 
 guests = []
+online_users = []
 
 class login_form(FlaskForm):
     username = StringField('Username:',validators=[DataRequired()])
@@ -108,6 +109,7 @@ def home():
                 session['uname'] = uname
                 session['utype'] = 'guest'
                 session['room'] = 'general'
+                guests.append(uname)
                 utype = 'guest'
                 break
     return render_template('index.html',user=uname,usertype=utype,loginform=lgn)
@@ -152,7 +154,7 @@ def chatroom():
             session['uname'] = lgn.username.data
             session['utype'] = 'registered'
             return redirect(url_for('chatroom'))
-    return render_template("chatpage.html",user=uname,usertype=utype,room=room,chats=chatlog,cooldown=cdcheck(),loginform=lgn)
+    return render_template("chatpage.html",user=uname,usertype=utype,room=room,chats=chatlog,online=online_users,cooldown=cdcheck(),loginform=lgn)
 
 @app.route('/api/getchat')
 def getchat_roomchange():
@@ -170,7 +172,6 @@ def getchat_scroll():
     if chatcount >= maxchats:
         return jsonify([])
     sendchats = 25 if maxchats-chatcount>=25 else maxchats-chatcount
-    print(chatcount,' ',maxchats,' ',sendchats)
     c = chat_msg.query.filter_by(room=room).order_by(chat_msg.id.desc()).offset(chatcount).limit(sendchats).all()
     chschema = chatSchema(many=True)
     chatlog = chschema.dump(c)
@@ -194,11 +195,18 @@ def cdcheck():
 def handle_connect():
     uname = session.get('uname')
     room = session.get('room')
-    if uname is None or room is None:
+    if uname is None or room is None or uname in online_users:
         return
+    online_users.append(uname)
+    emit('user_connect',{ 'user': uname },broadcast=True)
     join_room(room)
-    # emit() # push online members from here
-    # rooms[room]["members"] += 1
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    uname = session.get('uname')
+    if uname in online_users:
+        online_users.remove(uname)
+        emit('user_disconnect',{ 'user': uname },broadcast=True)
 
 @socketio.on('changeroom')
 def handle_changeroom(payload):
@@ -220,7 +228,7 @@ def handle_message(payload):
     ts = datetime.now()
     if utype == 'guest':
         if session.get('last_msg_ts'):
-            if cdcheck() >= 0:
+            if cdcheck() > 0:
                 return
             else:
                 session['last_msg_ts'] = ts

@@ -5,23 +5,15 @@ body, html {
   color: white;
 }
 
-.content {
-	margin:0 auto;
-}
-
-.unselectable {
+/*.unselectable {
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
-}
-
-.centered {
-  text-align: center;
-}
+}*/
 
 .topbar {
-  height: 24px;
+  height: 30px;
   background-color: darkgray;
   display: flex;
   flex-direction: row-reverse;
@@ -50,19 +42,45 @@ body, html {
   z-index:1000;
 }
 
+.register-box {
+  margin-left: 40vw;
+}
+
 .register-box * {
   margin: 5px;
+  font-size: 25px;
 }
 
 .room-button {
   background-color: rgb(50, 50, 50);
   border-radius: 5px;
   color: white;
+  font-weight: bold;
   font-size: 15px;
 }
+
 .room-button:hover {
+  color: black;
   border-color: black;
   background-color: gray;
+}
+
+.chat-container {
+  display: flex;
+  flex-direction: row;
+	padding: 10px;
+  margin: 10px;
+}
+
+.chat-section {
+  display: flex;
+  flex-direction: column;
+  background-color: rgb(30, 30, 30);
+  padding: 5px;
+  margin: 2px;
+  border-width: 2px;
+  border-radius: 10px;
+  border-color: blue;
 }
 
 .chat-list {
@@ -76,12 +94,13 @@ body, html {
   padding: 10px;
 }
 
-.form {
-	margin-top: 20px;
-}
-
-.content {
-	width: 70%;
+.user-list div {
+  padding: 5px;
+  margin: 5px;
+  background-color: green;
+  border-radius: 5px;
+  font-weight: bold;
+  font-size: 15px;
 }
 
 .muted-text {

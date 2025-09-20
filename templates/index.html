@@ -1,19 +1,14 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<title>Welcome to the Community Hub</title>
+<title>Community Hub</title>
 {% endblock %}
 
 {% block body %}
-<div class="content">
-	<h1 class="centered">Welcome, {{ user }}</h1>
-	<form method="POST">
+<div>
+	<h1 style="text-align: center;">Welcome, {{ user }}</h1>
+	<form method="POST" style="text-align: center;">
 		<button type="submit" name="room-btn">Enter room</button>
 	</form>
-	<!--h1 style="text-align: center">Enter Username</h1-->
-	<!--form method="POST" id="username">
-		<input type="text" placeholder="Enter your username.." id="uname" name="uname" />
-		<button type="submit" id="send-btn">Enter</button>
-	</form-->
 </div>
 {% endblock %}

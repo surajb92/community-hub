@@ -1,4 +1,3 @@
-var socketio = io();
 var observer = new IntersectionObserver( (entries,observer) => {
     entries.forEach(entry => {
         if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
@@ -20,10 +19,30 @@ socketio.on("sendmsg", function (chat) {
     }
 });
 
+socketio.on("user_connect", function(data) {
+    user_list = document.getElementById('user-list');
+    if (online_users.includes(data.user))
+        return;
+    var u = document.createElement('div');
+    u.innerHTML = data.user;
+    user_list.appendChild(u);
+})
+
+socketio.on("user_disconnect", function(data) {
+    user_list = document.getElementById('user-list');
+    for (u of user_list.children) {
+        if (u.innerHTML == data.user)
+            user_list.removeChild(u);
+    }
+})
+
 document.addEventListener('DOMContentLoaded', function(event) {
     var chat_list = document.getElementById(room);
+    if (!(uname in online_users))
+        online_users.push(uname);
     chat_list.style.display = "block";
     populateChat(init_chat);
+    populateUsers(online_users);
     setTimeout(() => { observer.observe(loadbar) }, 1000);
     startCooldown(cd);
 });
@@ -55,15 +74,19 @@ function startCooldown(cooldown) {
     }
 }
 
-const obsFunction = (entries,observer) => {
-    entries.forEach(entry => {
-        if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
-            var chat_list = entry.parentNode;
-            chat_list.removeChild(entry);
-            loadMoreChats();
-            chat_list.prepend(entry);
-        }
-    });
+function populateUsers(users) {
+    user_list = document.getElementById('user-list');
+    for (const i of users) {
+        var u = document.createElement('div');
+        u.innerHTML = i;
+        user_list.appendChild(u);
+    }
+}
+
+function addUser(user) {
+}
+
+function removeUser(user) {
 }
 
 function loadMoreChats() {
@@ -96,7 +119,6 @@ function populateChat(chats, scrolldown=true) {
         chat_list.lastChild.scrollIntoView( { behavior:'smooth' })
     else {
         chat_list.scrollTop = chat_list.scrollHeight - h
-        console.log(chat_list.scrollTop, chat_list.scrollHeight, h)
     }
     if (chats.length !== 0)
         chat_list.prepend(loadbar);
