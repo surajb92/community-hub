@@ -6,13 +6,18 @@ var observer = new IntersectionObserver( (entries,observer) => {
     });
 }, {root:null, rootMargin:'0px', threshold:0.5});
 var loadbar = document.createElement('div');
-    loadbar.innerHTML = `
-        <div class="message-item" style="text-align: center; margin: auto;">Loading...</div>
-    `;
+loadbar.innerHTML = `
+    <div class="message-item" style="text-align: center; margin: auto;">Loading...</div>
+`;
+
+if (sessionStorage.getItem('peer_colors') === undefined) {
+    sessionStorage.setItem('peer_colors', JSON.stringify({}));
+}
+var peer_colors = JSON.parse(sessionStorage.getItem('peer_colors'));
 
 socketio.on("sendmsg", function (chat) {
     var chat_list = document.getElementById(room);
-    newchat = createChatElement(chat);
+    newchat = createChatElement(chat, justnow=uname===chat.sender);
     chat_list.appendChild(newchat);
     if (uname === chat.sender) {
         chat_list.scrollTop = chat_list.scrollHeight;
@@ -83,12 +88,6 @@ function populateUsers(users) {
     }
 }
 
-function addUser(user) {
-}
-
-function removeUser(user) {
-}
-
 function loadMoreChats() {
     fetch('/api/morechats')
         .then(response=> {
@@ -110,8 +109,8 @@ function populateChat(chats, scrolldown=true) {
     if (loadbar.parentNode == chat_list)
         chat_list.removeChild(loadbar);
     h = chat_list.scrollHeight
-    for (let c in chats) {
-        t = createChatElement(chats[c]);
+    for (let c of chats) {
+        t = createChatElement(c);
         chat_list.prepend(t);
     }
     // This auto smooth scrolls to the last chat, if 2nd argument is not given
@@ -124,31 +123,71 @@ function populateChat(chats, scrolldown=true) {
         chat_list.prepend(loadbar);
 }
 
-function createChatElement(chat) {
+function createChatElement(chat,justnow=false) {
     var sent_by_me = uname === chat.sender;
-    
     const newchat = document.createElement('div');
     newchat.className = 'message-item ';
     newchat.className += sent_by_me ? 'self-message-item' : 'peer-message-item';
-    const sndr = document.createElement('small');
-    sndr.className = sent_by_me ? 'user-text' : 'peer-text';
-    sndr.textContent = chat.sender;
+    const sender_box = document.createElement('div');
+    const sname = document.createElement('small');
+    sender_box.style.display = 'flex';
+    sender_box.appendChild(sname);
+    sname.textContent = chat.sender;
+    sname.style.fontWeight = 'bold';
+    if (sent_by_me) {
+        sname.style.color = 'rgb(13, 150, 255)';
+    } else {
+        if (peer_colors[chat.sender] !== undefined) {
+            sname.style.color = peer_colors[chat.sender];
+        } else {
+            newcolor = generatePeerColor();
+            peer_colors[chat.sender] = newcolor;
+            sessionStorage.setItem('peer_colors', JSON.stringify(peer_colors));
+            sname.style.color = newcolor;
+        }
+    }
+    if (justnow) {
+        editbutton = document.createElement('button');
+        editbutton.className = 'edit-button';
+        editbutton.innerHTML = '<i class="fas fa-edit"></i>';
+        sender_box.appendChild(editbutton);
+    }
+
     const msg = document.createElement('div');
     msg.textContent = chat.message;
     const ts = document.createElement('small');
     ts.className = sent_by_me ? 'muted-text' : 'muted-text-white';
     ts.textContent = new Date(chat.timestamp).toLocaleString('en-GB', {hour12: true}).replace(/am/i, "AM").replace(/pm/i, "PM");
 
-    newchat.appendChild(sndr);
+    newchat.appendChild(sender_box);
     newchat.appendChild(msg);
     newchat.appendChild(ts);
 
     return newchat;
 }
 
+function generatePeerColor() {
+    var hue = Math.floor(Math.random() * 361);
+    const saturation = 100;
+    const lightness = 60;
+    let newcolor;
+    looper = true;
+    while (looper) {
+        looper = false;
+        hue = Math.floor(Math.random() * 361);
+        newcolor = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+        for(c of Object.values(peer_colors)) {
+            if (newcolor === c) {
+                looper = true;
+                break;
+            }
+        }
+    }
+    return newcolor;
+}
+
 function sendMessage() {
     var userchat = document.getElementById("userchat");
-    var chat_list = document.getElementById(room);
     if (userchat.value === "") return;
     var msg = userchat.value;
     socketio.emit("message", { message: msg });
