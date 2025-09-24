@@ -15,6 +15,7 @@ from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_wtf import FlaskForm
+from sqlalchemy import select,func
 from wtforms import StringField, SubmitField, PasswordField
 from wtforms.validators import DataRequired, ValidationError
 
@@ -57,15 +58,12 @@ class user_list(db.Model):
     username = db.Column(db.String(100), nullable=False)
     password = db.Column(db.String(500), nullable=False)
 
-guests = []
-online_users = []
-
 class login_form(FlaskForm):
     username = StringField('Username:',validators=[DataRequired()])
     password = PasswordField('Password:',validators=[DataRequired()])
     login_submit = SubmitField('Login')
     def validate_username(self,username):
-        u = db.session.query(user_list).filter_by(username=username.data).first()
+        u = db.session.execute(select(user_list).filter_by(username=username.data)).scalar_one()
         if not u:
             raise ValidationError("Invalid credentials")
         p = u.password
@@ -146,7 +144,7 @@ def chatroom():
     if not chatcount:
         session['chatcount'] = { room: 50 }
         chatcount = session.get('chatcount')
-    c = chat_msg.query.filter_by(room=room).order_by(chat_msg.id.desc()).limit(chatcount.get(room)).all()
+    c = db.session.scalars(select(chat_msg).order_by(chat_msg.id.desc()).limit(chatcount.get(room)))
     chschema = chatSchema(many=True)
     chatlog = chschema.dump(c)
     if request.method == "POST":
@@ -159,7 +157,7 @@ def chatroom():
 @app.route('/api/getchat')
 def getchat_roomchange():
     room = session.get('room')
-    c = chat_msg.query.filter_by(room=room).order_by(chat_msg.id.desc()).limit(session.get('chatcount').get(room)).all()
+    c = db.session.scalars(select(chat_msg).filter_by(room=room).order_by(chat_msg.id.desc()).limit(session.get('chatcount').get(room)))
     chschema = chatSchema(many=True)
     chatlog = chschema.dump(c)
     return jsonify(chatlog)
@@ -168,11 +166,12 @@ def getchat_roomchange():
 def getchat_scroll():
     room = session.get('room')
     chatcount = session.get('chatcount').get(room)
-    maxchats = chat_msg.query.filter_by(room=room).count()
+    maxchats = db.session.execute(select(func.count(chat_msg.id)).filter(chat_msg.room==room)).scalar_one()
     if chatcount >= maxchats:
         return jsonify([])
     sendchats = 25 if maxchats-chatcount>=25 else maxchats-chatcount
-    c = chat_msg.query.filter_by(room=room).order_by(chat_msg.id.desc()).offset(chatcount).limit(sendchats).all()
+    # c = chat_msg.query.filter_by(room=room).order_by(chat_msg.id.desc()).offset(chatcount).limit(sendchats).all()
+    c = db.session.scalars(select(chat_msg).filter_by(room=room).order_by(chat_msg.id.desc()).offset(chatcount).limit(sendchats))
     chschema = chatSchema(many=True)
     chatlog = chschema.dump(c)
     session['chatcount'][room] += sendchats
@@ -251,6 +250,11 @@ if __name__ == "__main__":
     with app.app_context():
         try:
             db.create_all()
-        except:
+            guests = []
+            online_users = []
+            USERNAME_LIST = db.session.execute(select(user_list.username)).scalars().all()
+        except Exception as e:
+            print(e)
             exit("Error: DB missing - Either postgres has not started, or DB path is wrong.")
+
     socketio.run(app, host="0.0.0.0", debug=True)
