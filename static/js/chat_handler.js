@@ -10,10 +10,11 @@ loadbar.innerHTML = `
     <div class="message-item" style="text-align: center; margin: auto;">Loading...</div>
 `;
 
-if (sessionStorage.getItem('peer_colors') === undefined) {
-    sessionStorage.setItem('peer_colors', JSON.stringify({}));
+// localStorage.clear();
+if (localStorage.getItem('peer_colors') === null) {
+    localStorage.setItem('peer_colors', JSON.stringify({}));
 }
-var peer_colors = JSON.parse(sessionStorage.getItem('peer_colors'));
+var peer_colors = JSON.parse(localStorage.getItem('peer_colors'));
 
 socketio.on("sendmsg", function (chat) {
     var chat_list = document.getElementById(room);
@@ -137,12 +138,12 @@ function createChatElement(chat,justnow=false) {
     if (sent_by_me) {
         sname.style.color = 'rgb(13, 150, 255)';
     } else {
-        if (peer_colors[chat.sender] !== undefined) {
+        if (peer_colors && peer_colors[chat.sender] !== undefined) {
             sname.style.color = peer_colors[chat.sender];
         } else {
             newcolor = generatePeerColor();
             peer_colors[chat.sender] = newcolor;
-            sessionStorage.setItem('peer_colors', JSON.stringify(peer_colors));
+            localStorage.setItem('peer_colors', JSON.stringify(peer_colors));
             sname.style.color = newcolor;
         }
     }
@@ -171,14 +172,24 @@ function generatePeerColor() {
     const saturation = 100;
     const lightness = 60;
     let newcolor;
-    looper = true;
-    while (looper) {
+    if (peer_colors)
+        looper = true;
+    else {
+        hue = Math.floor(Math.random() * 361);
+        newcolor = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+        looper = false;
+    }
+    while (looper) { // Loop to check if new user's colors are similar to already stored ones
         looper = false;
         hue = Math.floor(Math.random() * 361);
         newcolor = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
         for(c of Object.values(peer_colors)) {
-            if (newcolor === c) {
+            comma = c.indexOf(',');
+            h = parseInt(c.substring(4,comma),10);
+            too_similar = Math.abs(hue - h) < 5;
+            if (too_similar) {
                 looper = true;
+                console.log("Colors too similar")
                 break;
             }
         }
