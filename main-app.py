@@ -17,7 +17,7 @@ from flask_limiter.util import get_remote_address
 from flask_wtf import FlaskForm
 from sqlalchemy import select,func
 from wtforms import StringField, SubmitField, PasswordField
-from wtforms.validators import DataRequired, ValidationError
+from wtforms.validators import DataRequired, EqualTo, ValidationError
 
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
@@ -48,11 +48,6 @@ class chat_msg(db.Model):
     room = db.Column(db.String(100), nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
-class chatSchema(ms.SQLAlchemyAutoSchema):
-    class Meta:
-        model = chat_msg
-        load_instance = True
-
 class user_list(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), nullable=False)
@@ -70,6 +65,33 @@ class login_form(FlaskForm):
         if not check_password_hash(p, self.password.data):
             raise ValidationError("Invalid credentials")
 
+class register_form(FlaskForm):
+    username = StringField('Username:',validators=[DataRequired()])
+    password = PasswordField('Password:',validators=[DataRequired()])
+    password2 = StringField('Repeat Password:',validators=[DataRequired(), EqualTo('password', message="Passwords must match")])
+    reg_submit = SubmitField('Register')
+    def validate_username(self,username):
+        u = db.session.execute(select(user_list).filter_by(username=username.data)).scalar_one()
+        if u:
+            raise ValidationError("User already exists")
+        #if (self.password.data and self.password2.data and self.password.data != self.password2.data):
+            #raise ValidationError("Passwords must match")
+
+# Schema for serializing objects retrieved from database
+class chatSchema(ms.SQLAlchemyAutoSchema):
+    class Meta:
+        model = chat_msg
+        load_instance = True
+
+def cdcheck():
+    last_ts = session.get('last_msg_ts')
+    if session.get('utype') != 'guest':
+        return -1
+    if last_ts:
+        return 10-(datetime.now() - last_ts).seconds
+    else:
+        return -1
+
 """ Keeping in case you need to check anything before processing request.
 @app.before_request
 def pre_processor():
@@ -82,7 +104,7 @@ def pre_processor():
 """
 
 # ------------------------------
-#   Flask Routes
+#   Main URL Routes
 # ------------------------------
 
 @app.route('/', methods=["GET", "POST"])
@@ -154,6 +176,10 @@ def chatroom():
             return redirect(url_for('chatroom'))
     return render_template("chatpage.html",user=uname,usertype=utype,room=room,chats=chatlog,online=online_users,cooldown=cdcheck(),loginform=lgn)
 
+# ------------------------------
+#   API-only Routes
+# ------------------------------
+
 @app.route('/api/getchat')
 def getchat_roomchange():
     room = session.get('room')
@@ -177,14 +203,17 @@ def getchat_scroll():
     session['chatcount'][room] += sendchats
     return jsonify(chatlog)
 
-def cdcheck():
-    last_ts = session.get('last_msg_ts')
-    if session.get('utype') != 'guest':
-        return -1
-    if last_ts:
-        return 10-(datetime.now() - last_ts).seconds
+@app.route('/api/unamecheck', methods=['POST'])
+def check_username_exists():
+    if request.is_json:
+        uname = request.get_json().get('username')
+        u_exists = False
+        if uname in USERNAME_LIST:
+            u_exists = True
+        return jsonify({"user_exists": u_exists}), 200
     else:
-        return -1
+        return jsonify({"error": "Request must be JSON"}), 400
+    
 
 # ------------------------------
 #   Socket handlers
@@ -246,15 +275,18 @@ def handle_message(payload):
     db.session.add(newmsg)
     db.session.commit()
 
+# ------------------------------
+#   Run app
+# ------------------------------
+
 if __name__ == "__main__":
     with app.app_context():
         try:
             db.create_all()
             guests = []
             online_users = []
-            USERNAME_LIST = db.session.execute(select(user_list.username)).scalars().all()
+            USERNAME_LIST = db.session.scalars(select(user_list.username)).all()
         except Exception as e:
             print(e)
             exit("Error: DB missing - Either postgres has not started, or DB path is wrong.")
-
     socketio.run(app, host="0.0.0.0", debug=True)

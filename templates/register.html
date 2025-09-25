@@ -8,7 +8,13 @@
 <div>
 	<h1 style="text-align: center">Register an account!</h1>
 	<form method="POST" id="registrar" class="register-box" onsubmit="return checkRegisterData()">
-		<input type="text" placeholder="Enter your username.." name="username" id="username" maxlength="50" required/><br>
+		<input type="text" placeholder="Enter your username.." name="username" id="username" maxlength="50" required/>
+		<span>
+			<span id="load" class="hidden"><i class="fas fa-spinner fa-spin"></i></span>
+			<span id="useryes" class="hidden"><i class="fas fa-check" style="color:green"></i>Username is available!</span>
+			<span id="userno" class="hidden"><i class="fas fa-times" style="color:red"></i>Username is already in use!</span>
+		</span>
+		<br>
 		<input type="password" placeholder="Enter your password.." name="password" id="password" maxlength="50" required/>
 		<label><input type="checkbox" id="showpass" autocomplete="off" onclick=togglePass()>Show</label><br>
 		<input type="password" placeholder="Repeat your password.." name="password2" id="password2" maxlength="50" required/><br>
