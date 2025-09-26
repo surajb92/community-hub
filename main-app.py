@@ -17,7 +17,7 @@ from flask_limiter.util import get_remote_address
 from flask_wtf import FlaskForm
 from sqlalchemy import select,func
 from wtforms import StringField, SubmitField, PasswordField
-from wtforms.validators import DataRequired, EqualTo, ValidationError
+from wtforms.validators import DataRequired, EqualTo, Length, ValidationError
 
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
@@ -66,16 +66,26 @@ class login_form(FlaskForm):
             raise ValidationError("Invalid credentials")
 
 class register_form(FlaskForm):
-    username = StringField('Username:',validators=[DataRequired()])
-    password = PasswordField('Password:',validators=[DataRequired()])
-    password2 = StringField('Repeat Password:',validators=[DataRequired(), EqualTo('password', message="Passwords must match")])
+    username = StringField(
+        'Username:',
+        render_kw={"placeholder": "Enter your username.."},
+        validators=[DataRequired(),Length(min=5,max=50, message="Username must be between 5 and 50 characters.")],
+        )
+    password = PasswordField(
+        'Password:',
+        render_kw={"placeholder": "Enter your password.."},
+        validators=[DataRequired(), Length(min=5,max=50, message="Password must be between 5 and 50 characters.")]
+        )
+    password2 = PasswordField(
+        'Repeat Password:',
+        render_kw={"placeholder": "Repeat your password.."},
+        validators=[DataRequired(),EqualTo('password', message="Passwords must match")]
+        )
     reg_submit = SubmitField('Register')
     def validate_username(self,username):
-        u = db.session.execute(select(user_list).filter_by(username=username.data)).scalar_one()
+        u = db.session.scalar(select(user_list).filter_by(username=username.data))
         if u:
             raise ValidationError("User already exists")
-        #if (self.password.data and self.password2.data and self.password.data != self.password2.data):
-            #raise ValidationError("Passwords must match")
 
 # Schema for serializing objects retrieved from database
 class chatSchema(ms.SQLAlchemyAutoSchema):
@@ -136,17 +146,20 @@ def home():
 
 @app.route('/register', methods=["GET", "POST"])
 def register():
+    reg = register_form()
     if request.method == "POST":
-        user = request.form.get('username')
-        pwd = request.form.get('password')
-        phash = generate_password_hash(pwd)
-        newuser = user_list(username=user,password=phash)
-        db.session.add(newuser)
-        db.session.commit()
-        session['uname'] = user
-        session['utype'] = 'registered'
-        return redirect(url_for('home'))
-    return render_template('register.html')
+        if reg.validate_on_submit():
+            user = request.form.get('username')
+            pwd = request.form.get('password')
+            phash = generate_password_hash(pwd)
+            newuser = user_list(username=user,password=phash)
+            db.session.add(newuser)
+            db.session.commit()
+            USERNAME_LIST.append(user)
+            session['uname'] = user
+            session['utype'] = 'registered'
+            return redirect(url_for('home'))
+    return render_template('register.html', regform=reg)
 
 @app.route('/logout')
 def logout():
