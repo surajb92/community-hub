@@ -8,7 +8,6 @@
 <div>
 	<h1 style="margin-left: 38.5vw;">Register an account!</h1>
 	<form method="POST" id="registrar" class="register-box" onsubmit="return checkRegisterData()">
-		<!--input type="text" placeholder="Enter your username.." name="username" id="username" maxlength="50" required/-->
 		<div>{{ regform.csrf_token }}</div>
 		<div>{{ regform.username }}
 		<span>
@@ -20,7 +19,6 @@
 		</div>
 		<div>
 		{{ regform.password }}<i id="pass-eye" class="fas fw fa-eye-slash"></i>
-		<!--label><input type="checkbox" id="showpass" autocomplete="off" onclick=togglePass()>Show</label-->
 		</div>
 		<div>{{ regform.password2 }}
 		<span>
@@ -29,18 +27,16 @@
 			<span id="pass2_no" class="hidden"><i class="fas fa-times" style="color:red"></i>Passwords do not match!</span>
 		</span>
 		</div>
-		<!--input type="password" placeholder="Enter your password.." name="password" id="password" maxlength="50" required/>
-		<br>
-		<input type="password" placeholder="Repeat your password.." name="password2" id="password2" maxlength="50" required/-->
 		{% if regform.errors %}
 			<div id="rerrors">
-			{% for error in regform.errors %}
-				<span style="color: red;">{{ error }}</span><br>
+			{% for field, errors in regform.errors.items() %}
+				{% for error in errors %}
+					<span style="color: red;">{{ error }}</span><br>
+				{% endfor %}
 			{% endfor %}
 			</div>
 		{% endif %}
 		<div style="margin-left: 16vw;">{{ regform.reg_submit }}</div>
-		<!--div style="margin-left: 16vw;"><button type="submit" id="send-btn">Register</button></div-->
 	</form>
 </div>
 <script src="{{ url_for('static', filename='js/register_handler.js') }}"></script>

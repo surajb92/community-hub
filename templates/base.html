@@ -28,7 +28,7 @@
 				{{ loginform.password.label }}<br>
 				{{ loginform.password() }}
 				<br>
-				{% if loginform.errors %}
+				{% if loginform.username.errors %}
 					<script>const lgn_errors = true;</script>
 					<div id="lerrors">
 					{% for error in loginform.username.errors %}
