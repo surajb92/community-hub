@@ -6,7 +6,7 @@
 const uname = '{{user}}';
 const utype = '{{usertype}}';
 var cd = {{cooldown}}
-var room = "{{room}}";
+var room = '{{room}}';
 var init_chat = {{ chats | tojson }};
 var online_users = {{ online | tojson }};
 </script>
@@ -17,17 +17,21 @@ var online_users = {{ online | tojson }};
 <h1 id="chattitle" style="text-align: center">Main Hub</h1>
 <div class="chat-container">
 	<div class="chat-section" style="width: 20%;">
-		<button class="room-button" onclick="changeRoom('general')">General Room</button><br><br>
+		<button class="room-button" id="btn-general" onclick="changeRoom('general')">General Room</button><br><br>
 		{% if usertype == 'registered' %}
-		<button class="room-button" onclick="changeRoom('weebchat')">Anime | Manga | Manhwa etc.</button>
+		<button class="room-button" id="btn-weebchat" onclick="changeRoom('weebchat')">Anime | Manga | Manhwa etc.</button>
+		<button class="room-button" id="btn-music" onclick="changeRoom('music')">Music</button>
+		<button class="room-button" id="btn-politics" onclick="changeRoom('politics')">Politics (be nice)</button>
 		{% endif %}
 	</div>
 	<div class="chat-section" style="width: fit-content;">
 		<div class="chat-list" id="general"></div>
 		<div class="chat-list" id="weebchat"></div>
-		<div id="userchatbox" style="text-align: center; padding: 10px;">
-			<input type="text" style="width: 80%;" placeholder="Enter message.." id="userchat" name="userchat" />
-			<button type="submit" id="send-btn" onclick="sendMessage()">Send</button>
+		<div class="chat-list" id="music"></div>
+		<div class="chat-list" id="politics"></div>
+		<div id="userchatbox" style="display:flex; flex-direction:row; padding: 10px;">
+			<input class="chat-txtbox" type="text" placeholder="Enter message.." id="userchat" name="userchat" />
+			<button type="submit" class="chat-sendbutton" id="send-btn" onclick="sendMessage()">Send</button>
 		</div>
 	</div>
 	<div class="chat-section" style="width: 20%;">

@@ -65,6 +65,10 @@ body, html {
   background-color: gray;
 }
 
+.room-button.current {
+  border-color: blue;
+}
+
 .chat-container {
   display: flex;
   flex-direction: row;
@@ -101,6 +105,28 @@ body, html {
   border-radius: 5px;
   font-weight: bold;
   font-size: 15px;
+}
+
+.chat-txtbox {
+  color: white;
+  background-color: gray;
+  flex-grow: 1;
+  margin-right: 5px;
+}
+
+.chat-sendbutton {
+  background-color: hsl(215, 100%, 50%);
+  border-radius: 5px;
+  color: white;
+  font-weight: bold;
+  font-size: 15px;
+  margin: auto;
+}
+
+.chat-sendbutton:hover {
+  color: black;
+  border-color: black;
+  background-color: gray;
 }
 
 .muted-text {

@@ -49,6 +49,7 @@ document.addEventListener('DOMContentLoaded', function(event) {
     chat_list.style.display = "block";
     populateChat(init_chat);
     populateUsers(online_users);
+    document.getElementById('btn-'+room).classList.toggle('current');
     setTimeout(() => { observer.observe(loadbar) }, 1000);
     startCooldown(cd);
 });
@@ -115,7 +116,7 @@ function populateChat(chats, scrolldown=true) {
         chat_list.prepend(t);
     }
     // This auto smooth scrolls to the last chat, if 2nd argument is not given
-    if (scrolldown)
+    if (scrolldown && chat_list.hasChildNodes())
         chat_list.lastChild.scrollIntoView( { behavior:'smooth' })
     else {
         chat_list.scrollTop = chat_list.scrollHeight - h
@@ -189,7 +190,6 @@ function generatePeerColor() {
             too_similar = Math.abs(hue - h) < 5;
             if (too_similar) {
                 looper = true;
-                console.log("Colors too similar")
                 break;
             }
         }
@@ -215,6 +215,9 @@ function changeRoom(roomid) {
     var new_chat = document.getElementById(roomid);
     old_chat.style.display = "none";
     new_chat.style.display = "block";
+    document.getElementById('btn-'+room).classList.toggle('current');
+    document.getElementById('btn-'+roomid).classList.toggle('current');
+    
     socketio.emit("changeroom", { newroom: roomid} );
     room = roomid;
     if (!new_chat.hasChildNodes())
