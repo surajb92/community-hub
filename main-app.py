@@ -93,6 +93,7 @@ class chatSchema(ms.SQLAlchemyAutoSchema):
         model = chat_msg
         load_instance = True
 
+# Check chat cooldown for guest users
 def cdcheck():
     last_ts = session.get('last_msg_ts')
     if session.get('utype') != 'guest':
@@ -179,7 +180,7 @@ def chatroom():
     if not chatcount:
         session['chatcount'] = { room: 50 }
         chatcount = session.get('chatcount')
-    c = db.session.scalars(select(chat_msg).order_by(chat_msg.id.desc()).limit(chatcount.get(room)))
+    c = db.session.scalars(select(chat_msg).filter_by(room=room).order_by(chat_msg.id.desc()).limit(chatcount.get(room)))
     chschema = chatSchema(many=True)
     chatlog = chschema.dump(c)
     if request.method == "POST":
@@ -196,6 +197,8 @@ def chatroom():
 @app.route('/api/getchat')
 def getchat_roomchange():
     room = session.get('room')
+    if room not in ROOM_LIST:
+        return
     c = db.session.scalars(select(chat_msg).filter_by(room=room).order_by(chat_msg.id.desc()).limit(session.get('chatcount').get(room)))
     chschema = chatSchema(many=True)
     chatlog = chschema.dump(c)
@@ -236,7 +239,7 @@ def check_username_exists():
 def handle_connect():
     uname = session.get('uname')
     room = session.get('room')
-    if uname is None or room is None or uname in online_users:
+    if uname is None or room is None or uname in online_users or room not in ROOM_LIST:
         return
     online_users.append(uname)
     emit('user_connect',{ 'user': uname },broadcast=True)
@@ -253,6 +256,8 @@ def handle_disconnect():
 def handle_changeroom(payload):
     newroom = payload["newroom"]
     utype = session['utype']
+    if newroom not in ROOM_LIST:
+        return
     if newroom != 'general' and utype == 'guest':
         # Prevent guests from accessing rooms other than 'general'
         return
@@ -267,7 +272,11 @@ def handle_message(payload):
     uname = session.get('uname')
     utype = session.get('utype')
     ts = datetime.now()
+    if room not in ROOM_LIST:
+        return
     if utype == 'guest':
+        if room != 'general':
+            return
         if session.get('last_msg_ts'):
             if cdcheck() > 0:
                 return
@@ -299,6 +308,7 @@ if __name__ == "__main__":
             guests = []
             online_users = []
             USERNAME_LIST = db.session.scalars(select(user_list.username)).all()
+            ROOM_LIST = ['general','weebchat','music','politics']
         except Exception as e:
             print(e)
             exit("Error: DB missing - Either postgres has not started, or DB path is wrong.")
