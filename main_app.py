@@ -297,19 +297,23 @@ def handle_message(payload):
     db.session.add(newmsg)
     db.session.commit()
 
+
+# Pre processing weirdness
+guests = []
+online_users = []
+USERNAME_LIST = []
+ROOM_LIST = ['general','weebchat','music','politics']
+with app.app_context():
+    try:
+        db.create_all()
+        USERNAME_LIST += db.session.scalars(select(user_list.username)).all()
+    except Exception as e:
+        print(e)
+        exit("Error: DB missing - Either postgres has not started, or DB path is wrong.")
+
 # ------------------------------
 #   Run app
 # ------------------------------
 
 if __name__ == "__main__":
-    with app.app_context():
-        try:
-            db.create_all()
-            guests = []
-            online_users = []
-            USERNAME_LIST = db.session.scalars(select(user_list.username)).all()
-            ROOM_LIST = ['general','weebchat','music','politics']
-        except Exception as e:
-            print(e)
-            exit("Error: DB missing - Either postgres has not started, or DB path is wrong.")
     socketio.run(app, host="0.0.0.0", debug=True)

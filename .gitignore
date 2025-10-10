@@ -3,3 +3,4 @@ previously\ on\ dbz.txt
 .envv
 .vscode/*
 flask_session/*
+*.pyc
