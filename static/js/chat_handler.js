@@ -5,10 +5,6 @@ var observer = new IntersectionObserver( (entries,observer) => {
         }
     });
 }, {root:null, rootMargin:'0px', threshold:0.5});
-var loadbar = document.createElement('div');
-loadbar.innerHTML = `
-    <div class="message-item" style="text-align: center; margin: auto;">Loading...</div>
-`;
 
 // localStorage.clear();
 if (localStorage.getItem('peer_colors') === null) {
@@ -18,7 +14,7 @@ var peer_colors = JSON.parse(localStorage.getItem('peer_colors'));
 
 socketio.on("sendmsg", function (chat) {
     var chat_list = document.getElementById(room);
-    newchat = createChatElement(chat, justnow=uname===chat.sender);
+    newchat = createChatElement(chat, uname===chat.sender);
     chat_list.appendChild(newchat);
     if (uname === chat.sender) {
         chat_list.scrollTop = chat_list.scrollHeight;
@@ -50,7 +46,8 @@ document.addEventListener('DOMContentLoaded', function(event) {
     populateChat(init_chat);
     populateUsers(online_users);
     document.getElementById('btn-'+room).classList.toggle('current');
-    setTimeout(() => { observer.observe(loadbar) }, 1000);
+    //loadbar = document.getElementById(room+'-load');
+    //setTimeout(() => { observer.observe(loadbar) }, 1000);
     startCooldown(cd);
 });
 
@@ -108,9 +105,15 @@ function loadMoreChats() {
 
 function populateChat(chats, scrolldown=true) {
     var chat_list = document.getElementById(room);
-    if (loadbar.parentNode == chat_list)
+    var loadbar = document.getElementById(room+'-load');
+    if (!loadbar) {
+        loadbar = document.createElement('div');
+        loadbar.innerHTML = `<div class="message-item" style="text-align: center; margin: auto;">Loading...</div>`;
+        loadbar.id = room+'-load';
+        setTimeout(() => { observer.observe(loadbar) }, 300);
+    } else
         chat_list.removeChild(loadbar);
-    h = chat_list.scrollHeight
+    p = chat_list.scrollHeight - chat_list.scrollTop;
     for (let c of chats) {
         t = createChatElement(c);
         chat_list.prepend(t);
@@ -119,10 +122,14 @@ function populateChat(chats, scrolldown=true) {
     if (scrolldown && chat_list.hasChildNodes())
         chat_list.lastChild.scrollIntoView( { behavior:'smooth' })
     else {
-        chat_list.scrollTop = chat_list.scrollHeight - h
+        chat_list.scrollTop = chat_list.scrollHeight - p;
     }
     if (chats.length !== 0)
         chat_list.prepend(loadbar);
+}
+
+function removeEdit(editref) {
+    editref.remove();
 }
 
 function createChatElement(chat,justnow=false) {
@@ -148,18 +155,23 @@ function createChatElement(chat,justnow=false) {
             sname.style.color = newcolor;
         }
     }
-    if (justnow) {
-        editbutton = document.createElement('button');
-        editbutton.className = 'edit-button';
-        editbutton.innerHTML = '<i class="fas fa-edit"></i>';
-        sender_box.appendChild(editbutton);
-    }
-
     const msg = document.createElement('div');
     msg.textContent = chat.message;
     const ts = document.createElement('small');
     ts.className = sent_by_me ? 'muted-text' : 'muted-text-white';
-    ts.textContent = new Date(chat.timestamp).toLocaleString('en-GB', {hour12: true}).replace(/am/i, "AM").replace(/pm/i, "PM");
+    timestamp = new Date(chat.timestamp)
+    ts.textContent = timestamp.toLocaleString('en-GB', {hour12: true}).replace(/am/i, "AM").replace(/pm/i, "PM");
+    dt_diff = new Date() - timestamp;
+    const EDIT_TIME = 10000;
+
+    if (justnow || (sent_by_me && dt_diff < EDIT_TIME)) {
+        editbutton = document.createElement('button');
+        editbutton.className = 'edit-button';
+        editbutton.innerHTML = '<i class="fas fa-edit"></i>';
+        sender_box.appendChild(editbutton);
+        // settimeout to delete edit button after dt_diff ms
+        setTimeout(removeEdit, justnow ? EDIT_TIME : EDIT_TIME-dt_diff, editbutton);
+    }
 
     newchat.appendChild(sender_box);
     newchat.appendChild(msg);

@@ -297,7 +297,6 @@ def handle_message(payload):
     db.session.add(newmsg)
     db.session.commit()
 
-
 # Pre processing weirdness
 guests = []
 online_users = []
