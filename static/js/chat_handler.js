@@ -225,30 +225,28 @@ function changeRoom(newroom) {
     }
     var old_chat = document.getElementById(room);
     var new_chat = document.getElementById(newroom);
-    old_chat.style.display = "none";
-    new_chat.style.display = "block";
-    document.getElementById('btn-'+room).classList.toggle('current');
-    document.getElementById('btn-'+newroom).classList.toggle('current');
     socketio.emit("changeroom", { new_room: newroom} , (response) => {
-        if (response.status)
-            console.log("Changed room to ", newroom);
-        else
-            console.log("Failed to change room to ", newroom);
+        if (response.status) {
+            old_chat.style.display = "none";
+            new_chat.style.display = "block";
+            document.getElementById('btn-'+room).classList.toggle('current');
+            document.getElementById('btn-'+newroom).classList.toggle('current');
+            room = newroom;
+            if (!new_chat.hasChildNodes())
+                fetch('/api/getchat')
+                    .then(response=> {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(newchats => {
+                        populateChat(newchats);
+                    })
+                    .catch(error => {
+                        console.error('Error fetching messages from room ',room,': ', error);
+                    });
+        } else
+            console.error("Error! Failed to change room to ", newroom);
     });
-    room = newroom;
-    if (!new_chat.hasChildNodes())
-        fetch('/api/getchat')
-            .then(response=> {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(newchats => {
-                populateChat(newchats);
-                console.log("Populated new room chat")
-            })
-            .catch(error => {
-                console.error('Error fetching data:', error);
-            });
 }
