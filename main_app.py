@@ -229,7 +229,6 @@ def check_username_exists():
         return jsonify({"user_exists": u_exists}), 200
     else:
         return jsonify({"error": "Request must be JSON"}), 400
-    
 
 # ------------------------------
 #   Socket handlers
@@ -254,17 +253,18 @@ def handle_disconnect():
 
 @socketio.on('changeroom')
 def handle_changeroom(payload):
-    newroom = payload["newroom"]
+    newroom = payload["new_room"]
     utype = session['utype']
     if newroom not in ROOM_LIST:
-        return
+        return {'status':False}
     if newroom != 'general' and utype == 'guest':
         # Prevent guests from accessing rooms other than 'general'
-        return
+        return {'status':False}
     join_room(newroom)
     session['room'] = newroom
     if not session.get('chatcount').get(newroom):
         session['chatcount'][newroom] = 50
+    return {'status':True}
 
 @socketio.on('message')
 def handle_message(payload):

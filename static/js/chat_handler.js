@@ -219,19 +219,23 @@ function sendMessage() {
         startCooldown(10);
 }
 
-function changeRoom(roomid) {
-    if (room == roomid) {
+function changeRoom(newroom) {
+    if (room == newroom) {
         return;
     }
     var old_chat = document.getElementById(room);
-    var new_chat = document.getElementById(roomid);
+    var new_chat = document.getElementById(newroom);
     old_chat.style.display = "none";
     new_chat.style.display = "block";
     document.getElementById('btn-'+room).classList.toggle('current');
-    document.getElementById('btn-'+roomid).classList.toggle('current');
-    
-    socketio.emit("changeroom", { newroom: roomid} );
-    room = roomid;
+    document.getElementById('btn-'+newroom).classList.toggle('current');
+    socketio.emit("changeroom", { new_room: newroom} , (response) => {
+        if (response.status)
+            console.log("Changed room to ", newroom);
+        else
+            console.log("Failed to change room to ", newroom);
+    });
+    room = newroom;
     if (!new_chat.hasChildNodes())
         fetch('/api/getchat')
             .then(response=> {
@@ -242,6 +246,7 @@ function changeRoom(roomid) {
             })
             .then(newchats => {
                 populateChat(newchats);
+                console.log("Populated new room chat")
             })
             .catch(error => {
                 console.error('Error fetching data:', error);
