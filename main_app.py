@@ -20,7 +20,7 @@ from wtforms import StringField, SubmitField, PasswordField
 from wtforms.validators import DataRequired, EqualTo, Length, ValidationError
 
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 app = Flask(__name__)
 app.config['SESSION_TYPE'] = 'filesystem'
@@ -47,6 +47,7 @@ class chat_msg(db.Model):
     message = db.Column(db.String(1000), nullable=False)
     room = db.Column(db.String(100), nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    edited = db.Column(db.Boolean, default=False)
 
 class user_list(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -102,17 +103,6 @@ def cdcheck():
         return 10-(datetime.now() - last_ts).seconds
     else:
         return -1
-
-""" Keeping in case you need to check anything before processing request.
-@app.before_request
-def pre_processor():
-    if request.path.startswith('/static/'):
-        return
-    if request.path.startswith('api'):
-        return "Access denied" # This is a bit pointless as it will block fetch request from js as well
-    if not db:
-        return render_template('nodb.html')
-"""
 
 # ------------------------------
 #   Main URL Routes
@@ -230,6 +220,21 @@ def check_username_exists():
     else:
         return jsonify({"error": "Request must be JSON"}), 400
 
+@app.route('/api/editmessage', methods=['POST'])
+def edit_message():
+    if request.is_json:
+        chatid = request.get_json().get('id')
+        msg = request.get_json().get('newmessage')
+    chat = db.session.scalars(select(chat_msg).filter_by(id=chatid)).first()
+    print((datetime.now() - chat.timestamp).seconds)
+    if ((datetime.now() - chat.timestamp).seconds > 300):
+        return jsonify({msg: "Edit cooldown exceeded"}), 400
+    else:
+        chat.message = msg
+        chat.edited = True
+        db.session.commit()
+        return jsonify({msg: "Success!"}), 200
+
 # ------------------------------
 #   Socket handlers
 # ------------------------------
@@ -286,16 +291,17 @@ def handle_message(payload):
             session['last_msg_ts'] = ts
     elif session.get('last_msg_ts'):
         del session['last_msg_ts']
-    msg = {
-        "sender": uname,
-        "message": payload["message"],
-        "timestamp": ts.strftime("%Y-%m-%dT%H:%M:%S")
-    }
-    emit('sendmsg', msg, to=room)
     newmsg = chat_msg(sender=uname,message=payload["message"],timestamp=ts,room=room)
     session['chatcount'][room] += 1
     db.session.add(newmsg)
     db.session.commit()
+    msg = {
+        "sender": uname,
+        "message": payload["message"],
+        "timestamp": ts.isoformat(),
+        "id": newmsg.id
+    }
+    emit('sendmsg', msg, to=room)
 
 # Pre processing weirdness
 guests = []

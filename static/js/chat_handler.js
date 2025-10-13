@@ -6,7 +6,6 @@ var observer = new IntersectionObserver( (entries,observer) => {
     });
 }, {root:null, rootMargin:'0px', threshold:0.5});
 
-// localStorage.clear();
 if (localStorage.getItem('peer_colors') === null) {
     localStorage.setItem('peer_colors', JSON.stringify({}));
 }
@@ -46,16 +45,15 @@ document.addEventListener('DOMContentLoaded', function(event) {
     populateChat(init_chat);
     populateUsers(online_users);
     document.getElementById('btn-'+room).classList.toggle('current');
-    //loadbar = document.getElementById(room+'-load');
-    //setTimeout(() => { observer.observe(loadbar) }, 1000);
     startCooldown(cd);
 });
 
 document.addEventListener('keydown', function (event) {
-    userchat = document.getElementById('userchat');
-    button = document.getElementById('send-btn');
-    if (event.key === "Enter" &&  userchat === document.activeElement && !button.disabled) {
-        sendMessage();
+    if (event.key === "Enter") {
+        userchat = document.getElementById('userchat');
+        button = document.getElementById('send-btn');
+        if (userchat === document.activeElement && !button.disabled)
+            sendMessage();
     }
 });
 
@@ -90,16 +88,15 @@ function populateUsers(users) {
 function loadMoreChats() {
     fetch('/api/morechats')
         .then(response=> {
-            if (!response.ok) {
+            if (!response.ok)
                 throw new Error(`HTTP error! status: ${response.status}`);
-            }
             return response.json();
         })
         .then(newchats => {
             populateChat(newchats,false);
         })
         .catch(error => {
-            console.error('Error fetching data:', error);
+            console.error('Error fetching data: ', error);
         });
 }
 
@@ -120,7 +117,7 @@ function populateChat(chats, scrolldown=true) {
     }
     // This auto smooth scrolls to the last chat, if 2nd argument is not given
     if (scrolldown && chat_list.hasChildNodes())
-        chat_list.lastChild.scrollIntoView( { behavior:'smooth' })
+        chat_list.lastChild.scrollIntoView( { behavior:'smooth' });
     else {
         chat_list.scrollTop = chat_list.scrollHeight - p;
     }
@@ -128,7 +125,9 @@ function populateChat(chats, scrolldown=true) {
         chat_list.prepend(loadbar);
 }
 
-function removeEdit(editref) {
+function removeEdit(editref,chatid) {
+    msg = document.getElementById('edit-'+chatid)
+    msg.removeAttribute('id');
     editref.remove();
 }
 
@@ -138,11 +137,19 @@ function createChatElement(chat,justnow=false) {
     newchat.className = 'message-item ';
     newchat.className += sent_by_me ? 'self-message-item' : 'peer-message-item';
     const sender_box = document.createElement('div');
-    const sname = document.createElement('small');
     sender_box.style.display = 'flex';
-    sender_box.appendChild(sname);
+    const sname = document.createElement('small');
     sname.textContent = chat.sender;
     sname.style.fontWeight = 'bold';
+    sname.style.marginRight = 'auto';
+    sender_box.appendChild(sname);
+    const edited = document.createElement('small');
+    edited.className = 'edit-button';
+    edited.textContent = '(edited)';
+    edited.id = chat.id+'-edited';
+    edited.style.marginRight = '2px';
+    edited.hidden = !chat.edited;
+    sender_box.appendChild(edited);
     if (sent_by_me) {
         sname.style.color = 'rgb(13, 150, 255)';
     } else {
@@ -159,18 +166,20 @@ function createChatElement(chat,justnow=false) {
     msg.textContent = chat.message;
     const ts = document.createElement('small');
     ts.className = sent_by_me ? 'muted-text' : 'muted-text-white';
-    timestamp = new Date(chat.timestamp)
-    ts.textContent = timestamp.toLocaleString('en-GB', {hour12: true}).replace(/am/i, "AM").replace(/pm/i, "PM");
+    timestamp = new Date(chat.timestamp);
+    ts.textContent = timestamp.toLocaleString(undefined, {hour12: true});
     dt_diff = new Date() - timestamp;
-    const EDIT_TIME = 10000;
+    const EDIT_TIME = 120000;
 
     if (justnow || (sent_by_me && dt_diff < EDIT_TIME)) {
         editbutton = document.createElement('button');
         editbutton.className = 'edit-button';
         editbutton.innerHTML = '<i class="fas fa-edit"></i>';
+        msg.id = 'edit-'+chat.id;
+        editbutton.addEventListener('click', function () { editMessage(this, chat.id) });
         sender_box.appendChild(editbutton);
         // settimeout to delete edit button after dt_diff ms
-        setTimeout(removeEdit, justnow ? EDIT_TIME : EDIT_TIME-dt_diff, editbutton);
+        setTimeout(removeEdit, justnow ? EDIT_TIME : EDIT_TIME-dt_diff, editbutton, chat.id);
     }
 
     newchat.appendChild(sender_box);
@@ -178,6 +187,56 @@ function createChatElement(chat,justnow=false) {
     newchat.appendChild(ts);
 
     return newchat;
+}
+
+function editMessage(editb, chatid) {
+    editb.hidden = true;
+    const chat = document.getElementById('edit-'+chatid);
+    const oldmsg = chat.innerHTML;
+    const form = document.createElement('form');
+    const editbox = document.createElement('input');
+    const subm = document.createElement('input');
+    subm.type = 'submit';
+    subm.hidden = true;
+    editbox.name = 'newmsg';
+    editbox.value = oldmsg;
+    editbox.size = oldmsg.length > 60 ? 60 : oldmsg.length;
+    form.appendChild(editbox);
+    form.appendChild(subm);
+    chat.innerHTML = "";
+    chat.appendChild(form);
+    editbox.focus();
+    editbox.addEventListener('focusout', () => {
+        form.remove();
+        chat.innerHTML = oldmsg;
+        if (editb)
+            editb.hidden = false;
+    })
+    form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        fdata = new FormData(this);
+        const newmsg = fdata.get('newmsg');
+        form.remove();
+        fetch('/api/editmessage', {
+            method: 'POST',
+            headers: { 'Content-Type' : 'application/json'},
+            body: JSON.stringify( {id: chatid, newmessage: newmsg} )
+        })
+        .then(response => {
+            if (!response.ok) {
+                chat.innerHTML = oldmsg;
+                throw new Error(`HTTP error from server, status : ${response.status}`);
+            }
+            if (editb)
+                editb.hidden = false;
+            document.getElementById(chatid+'-edited').hidden = false;
+            chat.innerHTML = newmsg;
+        })
+        .catch(error => {
+            chat.innerHTML = oldmsg;
+            console.error('Error editing message with id ',chatid,': ', error);
+        });
+    })
 }
 
 function generatePeerColor() {
