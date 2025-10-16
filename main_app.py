@@ -59,7 +59,7 @@ class login_form(FlaskForm):
     password = PasswordField('Password:',validators=[DataRequired()])
     login_submit = SubmitField('Login')
     def validate_username(self,username):
-        u = db.session.execute(select(user_list).filter_by(username=username.data)).scalar_one()
+        u = db.session.execute(select(user_list).filter_by(username=username.data)).scalars()
         if not u:
             raise ValidationError("Invalid credentials")
         p = u.password
