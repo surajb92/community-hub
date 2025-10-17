@@ -275,7 +275,7 @@ function sendMessage() {
     socketio.emit("message", { message: msg });
     userchat.value = "";
     if (utype == 'guest')
-        startCooldown(10);
+        startCooldown(30);
 }
 
 function changeRoom(newroom) {

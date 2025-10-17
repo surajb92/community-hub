@@ -46,7 +46,7 @@ class chat_msg(db.Model):
     sender = db.Column(db.String(100), nullable=False)
     message = db.Column(db.String(1000), nullable=False)
     room = db.Column(db.String(100), nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=datetime.now(timezone.utc))
     edited = db.Column(db.Boolean, default=False)
 
 class user_list(db.Model):
@@ -96,11 +96,12 @@ class chatSchema(ms.SQLAlchemyAutoSchema):
 
 # Check chat cooldown for guest users
 def cdcheck():
+    GUEST_CHAT_COOLDOWN = 30
     last_ts = session.get('last_msg_ts')
     if session.get('utype') != 'guest':
         return -1
     if last_ts:
-        return 10-(datetime.now() - last_ts).seconds
+        return GUEST_CHAT_COOLDOWN-(datetime.now(timezone.utc) - last_ts).seconds
     else:
         return -1
 
@@ -226,7 +227,6 @@ def edit_message():
         chatid = request.get_json().get('id')
         msg = request.get_json().get('newmessage')
     chat = db.session.scalars(select(chat_msg).filter_by(id=chatid)).first()
-    print((datetime.now() - chat.timestamp).seconds)
     if ((datetime.now() - chat.timestamp).seconds > 300):
         return jsonify({msg: "Edit cooldown exceeded"}), 400
     else:
@@ -276,7 +276,7 @@ def handle_message(payload):
     room = session.get('room')
     uname = session.get('uname')
     utype = session.get('utype')
-    ts = datetime.now()
+    ts = datetime.now(timezone.utc)
     if room not in ROOM_LIST:
         return
     if utype == 'guest':
