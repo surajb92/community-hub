@@ -11,6 +11,7 @@ from flask_socketio import SocketIO, join_room, leave_room, send, emit
 from flask_session import Session
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
+from marshmallow import fields
 from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -93,6 +94,9 @@ class chatSchema(ms.SQLAlchemyAutoSchema):
     class Meta:
         model = chat_msg
         load_instance = True
+    timestamp = fields.Method("timezone_aware")
+    def timezone_aware(self,chatobj):
+        return chatobj.timestamp.astimezone()
 
 # Check chat cooldown for guest users
 def cdcheck():
