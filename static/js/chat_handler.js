@@ -276,6 +276,8 @@ function sendMessage() {
     userchat.value = "";
     if (utype == 'guest')
         startCooldown(30);
+    else
+        startCooldown(5);
 }
 
 function changeRoom(newroom) {

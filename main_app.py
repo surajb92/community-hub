@@ -100,12 +100,14 @@ class chatSchema(ms.SQLAlchemyAutoSchema):
 
 # Check chat cooldown for guest users
 def cdcheck():
+    USER_CHAT_COOLDOWN = 5
     GUEST_CHAT_COOLDOWN = 30
     last_ts = session.get('last_msg_ts')
-    if session.get('utype') != 'guest':
-        return -1
     if last_ts:
-        return GUEST_CHAT_COOLDOWN-(datetime.now(timezone.utc) - last_ts).seconds
+        if session.get('utype') == 'guest':
+            return GUEST_CHAT_COOLDOWN-(datetime.now(timezone.utc) - last_ts).seconds
+        else:
+            return USER_CHAT_COOLDOWN-(datetime.now(timezone.utc) - last_ts).seconds
     else:
         return -1
 
@@ -283,18 +285,15 @@ def handle_message(payload):
     ts = datetime.now(timezone.utc)
     if room not in ROOM_LIST:
         return
-    if utype == 'guest':
-        if room != 'general':
+    if utype == 'guest' and room != 'general':
+        return
+    if session.get('last_msg_ts'):
+        if cdcheck() > 0:
             return
-        if session.get('last_msg_ts'):
-            if cdcheck() > 0:
-                return
-            else:
-                session['last_msg_ts'] = ts
         else:
-            session['last_msg_ts'] = ts
-    elif session.get('last_msg_ts'):
-        del session['last_msg_ts']
+            del session['last_msg_ts']
+    else:
+        session['last_msg_ts'] = ts
     newmsg = chat_msg(sender=uname,message=payload["message"],timestamp=ts,room=room)
     session['chatcount'][room] += 1
     db.session.add(newmsg)
