@@ -216,7 +216,6 @@ function editMessage(editb, chatid) {
         event.preventDefault();
         fdata = new FormData(this);
         const newmsg = fdata.get('newmsg');
-        form.remove();
         fetch('/api/editmessage', {
             method: 'POST',
             headers: { 'Content-Type' : 'application/json'},
@@ -236,6 +235,7 @@ function editMessage(editb, chatid) {
             chat.innerHTML = oldmsg;
             console.error('Error editing message with id ',chatid,': ', error);
         });
+        form.remove();
     })
 }
 
