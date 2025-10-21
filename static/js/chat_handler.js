@@ -22,8 +22,10 @@ socketio.on("sendmsg", function (chat) {
 
 socketio.on("user_connect", function(data) {
     user_list = document.getElementById('user-list');
-    if (online_users.includes(data.user))
-        return;
+    for (u of user_list.children) {
+        if (u.innerHTML == data.user)
+            return;
+    }
     var u = document.createElement('div');
     u.innerHTML = data.user;
     user_list.appendChild(u);
@@ -39,8 +41,6 @@ socketio.on("user_disconnect", function(data) {
 
 document.addEventListener('DOMContentLoaded', function(event) {
     var chat_list = document.getElementById(room);
-    if (!(uname in online_users))
-        online_users.push(uname);
     chat_list.style.display = "block";
     populateChat(init_chat);
     populateUsers(online_users);

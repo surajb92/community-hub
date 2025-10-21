@@ -138,6 +138,7 @@ def home():
                 session['utype'] = 'guest'
                 session['room'] = 'general'
                 guests.append(uname)
+                online_users.append(uname)
                 utype = 'guest'
                 break
     return render_template('index.html',user=uname,usertype=utype,loginform=lgn)
@@ -252,8 +253,8 @@ def handle_connect():
     if uname is None or room is None or uname in online_users or room not in ROOM_LIST:
         return
     online_users.append(uname)
-    emit('user_connect',{ 'user': uname },broadcast=True)
     join_room(room)
+    emit('user_connect',{ 'user': uname },broadcast=True)
 
 @socketio.on('disconnect')
 def handle_disconnect():
