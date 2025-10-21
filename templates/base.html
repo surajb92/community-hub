@@ -15,7 +15,8 @@
 		{% elif usertype == 'registered' %}
 		<button onclick="window.location.href='/logout'">Logout</button>
 		{% endif %}
-		<button style="order: 1; margin-right: auto;" onclick="window.location.href='/'"><i class="fa fa-home"></i></button>
+		<button onclick="window.open('http://www.github.com/surajb92/community-hub')"><i class="fa-brands fa-github"></i></button>
+		<button style="margin-right: auto;" onclick="window.location.href='/'"><i class="fa fa-home"></i></button>
 		{% block topbar %}{% endblock %}
 	</div>
 	{% if usertype == 'guest' %}
