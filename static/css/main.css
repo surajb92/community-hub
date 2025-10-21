@@ -5,12 +5,12 @@ body, html {
   color: white;
 }
 
-/*.unselectable {
+.unselectable {
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
-}*/
+}
 
 .topbar {
   height: 30px;

@@ -30,6 +30,7 @@ var online_users = {{ online | tojson }};
 		<div class="chat-list" id="music"></div>
 		<div class="chat-list" id="politics"></div>
 		<div id="userchatbox" style="display:flex; flex-direction:row; padding: 10px;">
+			<label class="unselectable" style="align-self:center; margin-right:5px;">{{user}}:</label>
 			<input class="chat-txtbox" type="text" placeholder="Enter message.." id="userchat" name="userchat" />
 			<button type="submit" class="chat-sendbutton" id="send-btn" onclick="sendMessage()">Send</button>
 		</div>
