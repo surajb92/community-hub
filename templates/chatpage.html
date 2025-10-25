@@ -16,15 +16,15 @@ var online_users = {{ online | tojson }};
 {% block body %}
 <h1 id="chattitle" style="text-align: center">Main Hub</h1>
 <div class="chat-container">
-	<div class="chat-section" style="width: 20%;">
-		<button class="room-button" id="btn-general" onclick="changeRoom('general')">General Room</button><br><br>
+	<div class="chat-section" style="width: 10%;">
+		<button class="room-button" id="btn-general" onclick="changeRoom('general')">General Chat</button><br><br>
 		{% if usertype == 'registered' %}
 		<button class="room-button" id="btn-weebchat" onclick="changeRoom('weebchat')">Anime | Manga | Manhwa etc.</button>
 		<button class="room-button" id="btn-music" onclick="changeRoom('music')">Music</button>
 		<button class="room-button" id="btn-politics" onclick="changeRoom('politics')">Politics (be nice)</button>
 		{% endif %}
 	</div>
-	<div class="chat-section">
+	<div class="chat-section" style="width: 70%;">
 		<div class="chat-list" id="general"></div>
 		<div class="chat-list" id="weebchat"></div>
 		<div class="chat-list" id="music"></div>
@@ -35,7 +35,7 @@ var online_users = {{ online | tojson }};
 			<button type="submit" class="chat-sendbutton" id="send-btn" onclick="sendMessage()">Send</button>
 		</div>
 	</div>
-	<div class="chat-section" style="width: 20%;">
+	<div class="chat-section">
 		<div style="text-align: center; font-weight: bold;">Online Users</div>
 		<div id ="user-list" class="user-list"></div>
 	</div>

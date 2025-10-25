@@ -20,7 +20,7 @@
 		{% block topbar %}{% endblock %}
 	</div>
 	{% if usertype == 'guest' %}
-		<div id="login-overlay" class="login-overlay"></div>
+		<div id="login-overlay" class="basic-overlay login-overlay"></div>
 		<div id="login-popup" class="login-popup">
 			<form method="POST" id="login-form">
 				{{ loginform.csrf_token }}
@@ -43,7 +43,6 @@
 			</form>
 		</div>
 	{% endif %}
-	<script src="{{ url_for('static', filename='js/base.js') }}"></script>
 	{% block head %}{% endblock %}
 </head>
 <body>

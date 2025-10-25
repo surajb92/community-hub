@@ -1,3 +1,4 @@
+var socketio=io();
 var observer = new IntersectionObserver( (entries,observer) => {
     entries.forEach(entry => {
         if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
@@ -23,20 +24,54 @@ socketio.on("sendmsg", function (chat) {
 socketio.on("user_connect", function(data) {
     user_list = document.getElementById('user-list');
     for (u of user_list.children) {
-        if (u.innerHTML == data.user)
+        if (u.id == data.user)
             return;
     }
-    var u = document.createElement('div');
-    u.innerHTML = data.user;
-    user_list.appendChild(u);
+    createUserElement(data.user);
 })
 
 socketio.on("user_disconnect", function(data) {
     user_list = document.getElementById('user-list');
     for (u of user_list.children) {
-        if (u.innerHTML == data.user)
+        if (u.id == 'user-ele-'+data.user)
             user_list.removeChild(u);
     }
+})
+
+socketio.on("invite-c4-incoming", function(data) {
+    // alert(data.peer+" has invited you to play connect4");
+    const overlay = document.createElement('div');
+    overlay.classList = 'basic-overlay login-overlay';
+    overlay.style.display = "flex";
+    overlay.style.justifyContent = "center";
+    overlay.style.alignItems = "center";
+    const mbox = document.createElement('div');
+    const bbox = document.createElement('div');
+    bbox.style.display = "flex";
+    const invmsg = document.createElement('div');
+    invmsg.style.textAlign = "center";
+    invmsg.innerHTML = data.peer+" has invited you to play Connect4! <br>Accept?"
+    const yes = document.createElement('button');
+    yes.innerHTML = "Yes";
+    const no = document.createElement('button');
+    no.innerHTML = "No";
+    no.addEventListener('click', function () {
+        overlay.remove();
+    })
+    yes.addEventListener('click', function () {
+        overlay.remove();
+        socketio.emit("invite-c4-accepted", { peer: data.peer });
+    })
+    bbox.appendChild(yes);
+    bbox.appendChild(no);
+    mbox.appendChild(invmsg);
+    mbox.appendChild(bbox);
+    overlay.appendChild(mbox);
+    document.body.appendChild(overlay);
+})
+
+socketio.on("c4-start-game", function(data) {
+    window.location.href = "/connect4";
 })
 
 document.addEventListener('DOMContentLoaded', function(event) {
@@ -76,12 +111,58 @@ function startCooldown(cooldown) {
     }
 }
 
-function populateUsers(users) {
+function inviteMenu(userbtn,username){
+    const overlay = document.createElement('div');
+    overlay.className = "basic-overlay";
+    overlay.style.display = "block";
+    const rect = userbtn.getBoundingClientRect();
+    overlay.addEventListener('click', function clickme () {
+        this.remove();
+    })
+    const mbox = document.createElement('div');
+    mbox.style.position = 'absolute';
+    mbox.style.left = `${rect.left - 120}px`;
+    mbox.style.top = `${rect.bottom}px`;
+    mbox.style.color = "black";
+
+    const inv1 = document.createElement('button');
+    inv1.innerHTML = 'Invite to Connect4';
+    inv1.addEventListener('click', function () {
+        socketio.emit("invite-c4", { peer : username } );
+    })
+    mbox.appendChild(inv1);
+    overlay.appendChild(mbox);
+    document.body.appendChild(overlay);
+}
+
+function createUserElement(user) {
+    const is_this_me = user === uname;
     user_list = document.getElementById('user-list');
+    var bbox = document.createElement('div');
+    var ubox = document.createElement('span');
+    bbox.id = 'user-ele-'+user;
+    bbox.style.display = 'flex';
+    ubox.innerHTML = user;
+    ubox.style.marginRight = "5px";
+    bbox.appendChild(ubox);
+    if (is_this_me===true) {
+        bbox.style.backgroundColor = "hsla(210, 100%, 30%, 1.00)";
+        user_list.prepend(bbox);
+    } else {
+        var btn = document.createElement('button');
+        btn.style.marginLeft = "auto";
+        btn.style.backgroundColor = "hsla(120, 100%, 15%, 1.00)";
+        btn.style.color = "white";
+        btn.innerHTML = `<i class="fas fa-ellipsis-vertical"></i>`;
+        btn.onclick = () => inviteMenu(btn, user);
+        bbox.appendChild(btn);
+        user_list.appendChild(bbox);
+    }
+}
+
+function populateUsers(users) {
     for (const i of users) {
-        var u = document.createElement('div');
-        u.innerHTML = i;
-        user_list.appendChild(u);
+        createUserElement(i);
     }
 }
 
@@ -125,12 +206,6 @@ function populateChat(chats, scrolldown=true) {
         chat_list.prepend(loadbar);
 }
 
-function removeEdit(editref,chatid) {
-    msg = document.getElementById('edit-'+chatid)
-    msg.removeAttribute('id');
-    editref.remove();
-}
-
 function createChatElement(chat,justnow=false) {
     var sent_by_me = uname === chat.sender;
     const newchat = document.createElement('div');
@@ -138,11 +213,13 @@ function createChatElement(chat,justnow=false) {
     newchat.className += sent_by_me ? 'self-message-item' : 'peer-message-item';
     const sender_box = document.createElement('div');
     sender_box.style.display = 'flex';
+
     const sname = document.createElement('small');
     sname.textContent = chat.sender;
     sname.style.fontWeight = 'bold';
     sname.style.marginRight = 'auto';
     sender_box.appendChild(sname);
+
     const edited = document.createElement('small');
     edited.className = 'edit-button';
     edited.textContent = '(edited)';
@@ -150,6 +227,7 @@ function createChatElement(chat,justnow=false) {
     edited.style.marginRight = '2px';
     edited.hidden = !chat.edited;
     sender_box.appendChild(edited);
+
     if (sent_by_me) {
         sname.style.color = 'rgb(13, 150, 255)';
     } else {
@@ -187,6 +265,12 @@ function createChatElement(chat,justnow=false) {
     newchat.appendChild(ts);
 
     return newchat;
+}
+
+function removeEdit(editref,chatid) {
+    msg = document.getElementById('edit-'+chatid)
+    msg.removeAttribute('id');
+    editref.remove();
 }
 
 function editMessage(editb, chatid) {
