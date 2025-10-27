@@ -39,38 +39,35 @@ socketio.on("user_disconnect", function(data) {
 })
 
 socketio.on("invite-c4-incoming", function(data) {
-    // alert(data.peer+" has invited you to play connect4");
-    const overlay = document.createElement('div');
-    overlay.classList = 'basic-overlay login-overlay';
-    overlay.style.display = "flex";
-    overlay.style.justifyContent = "center";
-    overlay.style.alignItems = "center";
-    const mbox = document.createElement('div');
-    const bbox = document.createElement('div');
-    bbox.style.display = "flex";
-    const invmsg = document.createElement('div');
-    invmsg.style.textAlign = "center";
-    invmsg.innerHTML = data.peer+" has invited you to play Connect4! <br>Accept?"
-    const yes = document.createElement('button');
-    yes.innerHTML = "Yes";
-    const no = document.createElement('button');
-    no.innerHTML = "No";
-    no.addEventListener('click', function () {
-        overlay.remove();
+    dbox = createDialogBox(`${data.peer} has invited you to play Connect4!<br>Accept?`,'yesno');
+    dbox.overlay.id = "peer_invite";
+    dbox.no.addEventListener('click', function () {
+        dbox.overlay.remove();
+        socketio.emit("invite-c4-rejected", { gameid : data.gameid });
     })
-    yes.addEventListener('click', function () {
-        overlay.remove();
-        socketio.emit("invite-c4-accepted", { peer: data.peer });
+    dbox.yes.addEventListener('click', function () {
+        dbox.overlay.remove();
+        socketio.emit("invite-c4-accepted", { gameid : data.gameid });
     })
-    bbox.appendChild(yes);
-    bbox.appendChild(no);
-    mbox.appendChild(invmsg);
-    mbox.appendChild(bbox);
-    overlay.appendChild(mbox);
-    document.body.appendChild(overlay);
 })
 
-socketio.on("c4-start-game", function(data) {
+socketio.on("invite-c4-remove", function(data) {
+    myinv = document.getElementById('my_invite');
+    if (myinv)
+        myinv.remove();
+    peerinv = document.getElementById('peer_invite');
+    if (peerinv)
+        peerinv.remove();
+    if (data.rejected) {
+        socketio.emit("invite-c4-reject-ack");
+        dbox = createDialogBox("Your invite was rejected by "+data.peer, 'ok');
+        dbox.ok.addEventListener('click', function() {
+            dbox.overlay.remove();
+        })
+    }
+})
+
+socketio.on("c4-start-game", function() {
     window.location.href = "/connect4";
 })
 
@@ -111,7 +108,7 @@ function startCooldown(cooldown) {
     }
 }
 
-function inviteMenu(userbtn,username){
+function inviteMenu(userbtn,invpeer){
     const overlay = document.createElement('div');
     overlay.className = "basic-overlay";
     overlay.style.display = "block";
@@ -128,7 +125,12 @@ function inviteMenu(userbtn,username){
     const inv1 = document.createElement('button');
     inv1.innerHTML = 'Invite to Connect4';
     inv1.addEventListener('click', function () {
-        socketio.emit("invite-c4", { peer : username } );
+        socketio.emit("invite-c4", { peer : invpeer }, (response) => {
+            if (response.status) {
+                inviteWaiting('connect4', invpeer, response.gameid);
+            }
+        } );
+        
     })
     mbox.appendChild(inv1);
     overlay.appendChild(mbox);
@@ -394,4 +396,55 @@ function changeRoom(newroom) {
         } else
             console.error("Error! Failed to change room to ", newroom);
     });
+}
+
+function inviteWaiting(game, peer, g_id) {
+    dbox = createDialogBox(`Invited ${peer} to ${game}...<br>Awaiting response...<br><i class="fas fa-spinner fa-spin"></i>`,'cancel')
+    dbox.overlay.id = "my_invite";
+    dbox.cancel.addEventListener('click', function () {
+        dbox.overlay.remove();
+        socketio.emit("invite-c4-canceled", { gameid: g_id });
+    })
+}
+
+function createDialogBox(msg,format) {
+    var dbox = {};
+
+    const overlay = document.createElement('div');
+    const mbox = document.createElement('div');
+    const bbox = document.createElement('div');
+    const message = document.createElement('div');
+
+    message.style.textAlign = "center";
+    message.innerHTML = msg;
+    mbox.appendChild(message);
+    overlay.classList.add('basic-overlay','message-overlay','message-centered');
+    bbox.classList.add('message-centered');
+    mbox.appendChild(bbox);
+    overlay.appendChild(mbox);
+    document.body.appendChild(overlay);
+    dbox.overlay = overlay;
+    
+    if (format == "yesno") {
+        const yes = document.createElement('button');
+        const no = document.createElement('button');
+        yes.style.marginRight = "5px";
+        yes.innerHTML = "Yes";
+        no.innerHTML = "No";
+        bbox.appendChild(yes);
+        bbox.appendChild(no);
+        dbox.yes = yes;
+        dbox.no = no;
+    } else if (format == "cancel") {
+        const cancel = document.createElement('button');
+        cancel.innerHTML = "Cancel";
+        bbox.appendChild(cancel);
+        dbox.cancel = cancel;
+    } else if (format == "ok") {
+        const ok = document.createElement('button');
+        ok.innerHTML = "Ok";
+        bbox.appendChild(ok);
+        dbox.ok = ok;
+    }
+    return dbox;
 }

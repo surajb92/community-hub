@@ -17,7 +17,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_wtf import FlaskForm
 from sqlalchemy import select,func
-from uuid import uuid1
+from uuid import UUID, uuid1, uuid4
 from wtforms import StringField, SubmitField, PasswordField
 from wtforms.validators import DataRequired, EqualTo, Length, ValidationError
 
@@ -99,6 +99,19 @@ class chatSchema(ms.SQLAlchemyAutoSchema):
     def timezone_aware(self,chatobj):
         return chatobj.timestamp.astimezone()
 
+class connect4Game():
+    def __init__(self, g_id, host, peer):
+        self.gameid = g_id
+        self.game = "connect4"
+        self.player1 = host
+        self.player2 = peer
+        self.started = False
+    def game_setup(self):
+        self.board = [[0]*7 for _ in range(6)]
+        self.current_turn = self.player1
+    def get_peer(self):
+        return self.player2
+
 # Check chat cooldown for guest users
 def cdcheck():
     USER_CHAT_COOLDOWN = 5
@@ -178,7 +191,7 @@ def chatroom():
     chatcount = session.get('chatcount')
     if not chatcount:
         session['chatcount'] = { room: 50 }
-        chatcount = session.get('chatcount')
+        chatcount = session.get('chatcount')    
     c = db.session.scalars(select(chat_msg).filter_by(room=room).order_by(chat_msg.id.desc()).limit(chatcount.get(room)))
     chschema = chatSchema(many=True)
     chatlog = chschema.dump(c)
@@ -192,6 +205,9 @@ def chatroom():
 @app.route('/connect4', methods=["GET", "POST"])
 def connect4page():
     uname = session.get('uname')
+    game = session.get('game')
+    if (not game):
+        return redirect(url_for('chatroom'))
     return render_template("connect4.html",user=uname)
 
 # ------------------------------
@@ -256,10 +272,12 @@ def edit_message():
 def handle_connect():
     uname = session.get('uname')
     room = session.get('room')
+    game = session.get('game')
     if uname is None or room is None or uname in online_users.keys() or room not in ROOM_LIST:
         return
-    # online_users.append(uname)
     online_users[uname] = request.sid
+    #if game and NEED SOMEWAY TO CHECK URL HERE:
+    #    join_room(game)
     join_room(room)
     emit('user_connect',{ 'user': uname },broadcast=True)
 
@@ -267,7 +285,6 @@ def handle_connect():
 def handle_disconnect():
     uname = session.get('uname')
     if uname in online_users.keys():
-        # online_users.remove(uname)
         del online_users[uname]
         emit('user_disconnect',{ 'user': uname },broadcast=True)
 
@@ -315,29 +332,56 @@ def handle_message(payload):
     }
     emit('sendmsg', msg, to=room)
 
-# Game sockets
+# Connect4 game sockets
+# ------------------------------
 @socketio.on('invite-c4')
-def handle_c4_invite(payload):
+def handle_c4_inv_init(payload):
     uname = session.get('uname')
     peer = payload["peer"]
     print(uname," has invited ",peer," to play connect4")
-    emit('invite-c4-incoming', { "peer": uname }, room=online_users.get(peer))
+    gameid = uuid4()
+    while gameid in games.keys():
+        gameid = uuid4()
+    games[gameid] = connect4Game(gameid,uname,peer)
+    session['game'] = gameid
+    join_room(gameid)
+    emit('invite-c4-incoming', { "peer": uname, "gameid" : str(gameid) }, room=online_users.get(peer))
+    return {'status':True, 'gameid':str(gameid) }
+
+@socketio.on('invite-c4-canceled')
+def handle_c4_inv_canceled(payload):
+    join_room(session.get('room'))
+    g_id = session.get('game')
+    del session['game']
+    if games.get(g_id):
+        emit('invite-c4-remove', { "rejected": False }, room=online_users.get(games.get(g_id).get_peer()))
+        del games[g_id]
+
+@socketio.on('invite-c4-rejected')
+def handle_c4_inv_rejected(payload):
+    g_id = UUID(payload["gameid"])
+    uname = session.get('uname')
+    if games.get(g_id):
+        emit('invite-c4-remove', { "rejected": True, "peer": uname }, room=g_id)
+        del games[g_id]
+
+@socketio.on('invite-c4-reject-ack')
+def handle_c4_inv_reject_ack():
+    join_room(session.get('room'))
 
 @socketio.on('invite-c4-accepted')
-def handle_c4_accept(payload):
-    uname = session.get('uname')
-    peer = payload["peer"]
-    gamestate = {
-        "host": peer,
-        "peer": uname,
-        "id": uuid1()
-    }
-    session['gamestate'] = gamestate
-    emit('c4-start-game', { "peer": uname }, room=online_users.get(peer))
-    emit('c4-start-game', { "peer": peer }, room=online_users.get(uname))
+def handle_c4_inv_accept(payload):
+    g_id = UUID(payload["gameid"])
+    # session['prevroom'] = session.get('room')
+    join_room(g_id)
+    # session['room'] = g_id
+    games[g_id].game_setup()
+    emit('c4-start-game', {}, room=g_id)
+    # emit('c4-start-game', { "peer": peer }, room=online_users.get(uname))
 
 online_users = {}
 guests = []
+games = {}
 USERNAME_LIST = []
 ROOM_LIST = ['general','weebchat','music','politics']
 
