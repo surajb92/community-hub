@@ -15,9 +15,10 @@
 		{% elif usertype == 'registered' %}
 		<button onclick="window.location.href='/logout'">Logout</button>
 		{% endif %}
+		{% block topbar %}{% endblock %}
 		<button onclick="window.open('http://www.github.com/surajb92/community-hub')"><i class="fa-brands fa-github"></i></button>
 		<button style="margin-right: auto;" onclick="window.location.href='/'"><i class="fa fa-home"></i></button>
-		{% block topbar %}{% endblock %}
+		
 	</div>
 	{% if usertype == 'guest' %}
 		<div id="login-overlay" class="basic-overlay login-overlay"></div>
@@ -47,7 +48,8 @@
 </head>
 <body>
 	{% block body %}{% endblock %}
-	<!--script src="https://code.jquery.com/jquery-3.7.1.min.js"></script-->
+	{% if usertype %}
 	<script src="{{ url_for('static', filename='js/login_handler.js') }}"></script>
+	{% endif %}
 </body>
 </html>

@@ -68,7 +68,7 @@ socketio.on("invite-c4-remove", function(data) {
 })
 
 socketio.on("c4-start-game", function() {
-    window.location.href = "/connect4";
+    window.location.href = "/game/connect4";
 })
 
 document.addEventListener('DOMContentLoaded', function(event) {

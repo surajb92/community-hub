@@ -111,6 +111,8 @@ class connect4Game():
         self.current_turn = self.player1
     def get_peer(self):
         return self.player2
+    def get_game(self):
+        return self.game
 
 # Check chat cooldown for guest users
 def cdcheck():
@@ -128,6 +130,16 @@ def cdcheck():
 # ------------------------------
 #   Main URL Routes
 # ------------------------------
+
+@app.before_request
+def pre_processor():
+    # VERY IMPORTANT that this statement exists, messes up css and js references otherwise
+    if request.path.startswith('/static/'):
+        return
+    g_id = session.get('game')
+    if g_id and not request.path.startswith('/game/'):
+        game = games[g_id].get_game()
+        return redirect(url_for(game+'_page'))
 
 @app.route('/', methods=["GET", "POST"])
 def home():
@@ -202,12 +214,12 @@ def chatroom():
             return redirect(url_for('chatroom'))
     return render_template("chatpage.html",user=uname,usertype=utype,room=room,chats=chatlog,online=list(online_users.keys()),cooldown=cdcheck(),loginform=lgn)
 
-@app.route('/connect4', methods=["GET", "POST"])
-def connect4page():
+@app.route('/game/connect4', methods=["GET", "POST"])
+def connect4_page():
     uname = session.get('uname')
     game = session.get('game')
     if (not game):
-        return redirect(url_for('chatroom'))
+        return redirect(url_for('home'))
     return render_template("connect4.html",user=uname)
 
 # ------------------------------
@@ -270,14 +282,17 @@ def edit_message():
 
 @socketio.on('connect')
 def handle_connect():
+    game = session.get('game')
+    if game:
+        join_room(game)
+        return
+    
     uname = session.get('uname')
     room = session.get('room')
-    game = session.get('game')
     if uname is None or room is None or uname in online_users.keys() or room not in ROOM_LIST:
         return
+    
     online_users[uname] = request.sid
-    #if game and NEED SOMEWAY TO CHECK URL HERE:
-    #    join_room(game)
     join_room(room)
     emit('user_connect',{ 'user': uname },broadcast=True)
 
@@ -372,12 +387,21 @@ def handle_c4_inv_reject_ack():
 @socketio.on('invite-c4-accepted')
 def handle_c4_inv_accept(payload):
     g_id = UUID(payload["gameid"])
-    # session['prevroom'] = session.get('room')
     join_room(g_id)
-    # session['room'] = g_id
+    session['game'] = g_id
     games[g_id].game_setup()
     emit('c4-start-game', {}, room=g_id)
-    # emit('c4-start-game', { "peer": peer }, room=online_users.get(uname))
+
+@socketio.on('quit-game')
+def handle_quit_game():
+    g_id = session.get('game')
+    uname = session.get('uname')
+    del games[g_id]
+    emit('quit-game-server', { "who_quit": uname }, room=g_id)
+
+@socketio.on('quit-game-ack')
+def handle_quit_game_ack():
+    del session['game']
 
 online_users = {}
 guests = []

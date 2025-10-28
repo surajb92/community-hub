@@ -1,7 +1,15 @@
 {% extends 'base.html' %}
 
+{% block topbar %}
+<button style="display:flex; align-items:center;" onclick="quit_game()"><i class="fas fa-close" style="font-size:16px; color:red;"></i>Quit Game</button>
+{% endblock %}
+
 {% block head %}
 <title>Connect 4</title>
+<script>
+const uname = "{{ user }}";
+</script>
+<script src="{{ url_for('static', filename='js/connect4.js') }}"></script>
 {% endblock %}
 
 {% block body %}
