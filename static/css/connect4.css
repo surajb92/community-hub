@@ -1,0 +1,24 @@
+#gameboard {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    grid-template-rows: repeat(6, 1fr);
+    gap: 2px;
+    background: #333;
+    padding: 5px;
+    border-radius: 10px;
+    margin: 20px auto;
+    width: 420px;
+    height: 360px;
+    cursor: pointer;
+}
+
+.cell {
+    background: gray;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cell.red { background: #F44336; }
+.cell.yellow { background: #FFEB3B; }

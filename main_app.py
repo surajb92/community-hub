@@ -113,6 +113,10 @@ class connect4Game():
         return self.player2
     def get_game(self):
         return self.game
+    def my_turn(self,username):
+        return username == self.current_turn
+    def get_board(self):
+        return self.board
 
 # Check chat cooldown for guest users
 def cdcheck():
@@ -135,6 +139,8 @@ def cdcheck():
 def pre_processor():
     # VERY IMPORTANT that this statement exists, messes up css and js references otherwise
     if request.path.startswith('/static/'):
+        return
+    if request.path.startswith('/gameapi/'):
         return
     g_id = session.get('game')
     if g_id and not request.path.startswith('/game/'):
@@ -220,10 +226,10 @@ def connect4_page():
     game = session.get('game')
     if not game:
         return redirect(url_for('home'))
-    elif not games[game]:
+    elif not games.get(game):
         del session['game']
         return redirect(url_for('home'))
-    return render_template("connect4.html",user=uname)
+    return render_template("connect4.html",user=uname,board=games.get(game).get_board(), myturn=games.get(game).my_turn(uname))
 
 # ------------------------------
 #   API-only Routes
