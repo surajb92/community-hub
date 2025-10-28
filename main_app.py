@@ -218,7 +218,10 @@ def chatroom():
 def connect4_page():
     uname = session.get('uname')
     game = session.get('game')
-    if (not game):
+    if not game:
+        return redirect(url_for('home'))
+    elif not games[game]:
+        del session['game']
         return redirect(url_for('home'))
     return render_template("connect4.html",user=uname)
 
