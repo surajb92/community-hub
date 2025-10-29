@@ -105,18 +105,111 @@ class connect4Game():
         self.game = "connect4"
         self.player1 = host
         self.player2 = peer
-        self.started = False
-    def game_setup(self):
-        self.board = [[0]*7 for _ in range(6)]
+        self.movecount = 0
+    def game_start(self):
+        self.MAXROW = 6
+        self.MAXCOL = 7
+        self.board = [[0]*self.MAXCOL for _ in range(self.MAXROW)]
         self.current_turn = self.player1
+    
     def get_peer(self):
         return self.player2
     def get_game(self):
         return self.game
     def my_turn(self,username):
         return username == self.current_turn
+    def my_color(self,username):
+        return 1 if self.player1 == username else 2
     def get_board(self):
         return self.board
+    def valid_col(self,col):
+        return True if self.board[0][col] == 0 else False
+    def switch_turn(self):
+        if self.player1 == self.current_turn:
+            self.current_turn = self.player2
+        else:
+            self.current_turn = self.player1
+    
+    def calc_win(self,row,col,color):
+        # Check if column connects 4
+        c4=1
+        for i in range(self.MAXROW-1):
+            if self.board[i][col] == self.board[i+1][col] == color:
+                c4+=1
+                if c4 >= 4:
+                    print("Col win")
+                    return True
+            else:
+                c4=1
+        
+        # Check if row connects 4
+        c4=1
+        for i in range(self.MAXCOL-1):
+            if self.board[row][i] == self.board[row][i+1] == color:
+                c4+=1
+                if c4 >= 4:
+                    print("Row win")
+                    return True
+            else:
+                c4=1
+        
+        # Check if diagonal \ connects 4
+        c4=1
+        if col > row:
+            r,c = 0,col-row
+        elif row > col:
+            r,c = row-col,0
+        else:
+            r,c = 0,0
+        while r < (self.MAXROW-1) and c < (self.MAXCOL-1):
+            if self.board[r][c] == self.board[r+1][c+1] == color:
+                c4+=1
+                if c4 >= 4:
+                    print("diag \ win")
+                    return True
+            else:
+                c4=1
+            r+=1
+            c+=1
+        
+        #  Check if diagonal / connects 4
+        c4=1
+        max_col = self.MAXCOL-1
+        if row+col > max_col:
+            r,c = (row+col)-max_col,max_col
+        elif row+col < max_col:
+            r,c = 0,(row+col)
+        else:
+            r,c = 0,max_col
+
+        while r < (self.MAXROW-1) and c > 0:
+            if self.board[r][c] == self.board[r+1][c-1] == color:
+                c4+=1
+                if c4 >= 4:
+                    print("diag / win")
+                    return True
+            else:
+                c4=1
+            r+=1
+            c-=1
+        
+        # No connect4 yet
+        return False
+    
+    def make_move(self, col):
+        for i in range(self.MAXROW):
+            if self.board[i][col] != 0:
+                i-=1
+                break
+        self.board[i][col] = 1 if self.my_turn(self.player1) else 2
+        self.movecount+=1
+        if self.calc_win(i,col,self.my_color(self.current_turn)):
+            state = 'win'
+        elif self.movecount >= self.MAXROW*self.MAXCOL:
+            state = 'draw'
+        else:
+            state = 'continue'
+        return state
 
 # Check chat cooldown for guest users
 def cdcheck():
@@ -144,7 +237,7 @@ def pre_processor():
         return
     g_id = session.get('game')
     if g_id and not request.path.startswith('/game/'):
-        game = games[g_id].get_game()
+        game = games.get(g_id).get_game()
         return redirect(url_for(game+'_page'))
 
 @app.route('/', methods=["GET", "POST"])
@@ -398,7 +491,7 @@ def handle_c4_inv_accept(payload):
     g_id = UUID(payload["gameid"])
     join_room(g_id)
     session['game'] = g_id
-    games[g_id].game_setup()
+    games.get(g_id).game_start()
     emit('c4-start-game', {}, room=g_id)
 
 @socketio.on('quit-game')
@@ -411,6 +504,25 @@ def handle_quit_game():
 @socketio.on('quit-game-ack')
 def handle_quit_game_ack():
     del session['game']
+
+@socketio.on('c4-move')
+def handle_c4_move(payload):
+    uname = session.get('uname')
+    g_id = session.get('game')
+    game = games.get(g_id)
+    col = payload["column"]
+    if game.get_game() == "connect4" and game.my_turn(uname) and game.valid_col(col):
+        state = game.make_move(col)
+        if state == 'win':
+            del games[g_id]
+            emit('c4-gameover', { "state": state, "winner": uname }, room=g_id )
+        elif state == 'draw':
+            del games[g_id]
+            emit('c4-gameover', { "state": state }, room=g_id )
+        else:
+            color = game.my_color(uname)
+            game.switch_turn()
+            emit('move-made', { "column": col, "color": color }, room=g_id)
 
 online_users = {}
 guests = []

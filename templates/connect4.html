@@ -10,7 +10,7 @@
 <script>
 const uname = "{{ user }}";
 var my_turn = {{ myturn | tojson }};
-const board = {{ board | tojson }};
+var board = {{ board | tojson }};
 </script>
 <script src="{{ url_for('static', filename='js/connect4.js') }}"></script>
 {% endblock %}
