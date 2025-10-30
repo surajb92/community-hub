@@ -2,7 +2,7 @@
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     grid-template-rows: repeat(6, 1fr);
-    gap: 2px;
+    gap: 5px;
     background: #333;
     padding: 5px;
     border-radius: 10px;
@@ -10,6 +10,12 @@
     width: 420px;
     height: 360px;
     cursor: pointer;
+}
+
+.column-hover {
+    background: navy !important;
+    /*margin: 5px !important;*/
+    /* border-color: navy ! important;*/
 }
 
 .cell {
@@ -20,5 +26,7 @@
     justify-content: center;
 }
 
-.cell.red { background: #F44336; }
-.cell.yellow { background: #FFEB3B; }
+.cell.red { background: red; }
+.cell.red-sample { background: rgba(255, 60, 60, 0.3); }
+.cell.yellow { background: yellow; }
+.cell.yellow-sample { background: rgba(255, 255, 60, 0.3); }

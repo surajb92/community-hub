@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/connect4.css') }}">
 <script>
 const uname = "{{ user }}";
+const my_color = {{ mycolor | tojson }} === 1 ? 'yellow' : 'red';
 var my_turn = {{ myturn | tojson }};
 var board = {{ board | tojson }};
 </script>

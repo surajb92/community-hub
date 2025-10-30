@@ -58,7 +58,6 @@ document.addEventListener('DOMContentLoaded', function() {
             cell.dataset.row = row;
             cell.dataset.col = col;
             cell.dataset.fill = board[row][col];
-            // board_elements[row][col] = cell
             if (cell.dataset.fill == 1) {
                 cell.classList.add('yellow');
             } else if (cell.dataset.fill == 2) {
@@ -74,10 +73,38 @@ document.addEventListener('DOMContentLoaded', function() {
             const col = parseInt(e.target.dataset.col);
             const row = getNextRow(col);
             if (row !== -1) {
+                document.querySelectorAll('.'+my_color+'-sample').forEach(cell => {
+                    cell.classList.remove(my_color+'-sample');
+                });
                 socketio.emit("c4-move", { column: col } )
             }
         }
     })
+    for (i=0;i<7;i++) {
+
+    }
+
+    //board_elements[0][0]
+    gameboard.addEventListener('mouseover', (e) => {
+        if (e.target.classList.contains('cell') && my_turn) {
+            const col = parseInt(e.target.dataset.col);
+            const row = getNextRow(col);
+            if (row !== -1) {
+                board_elements[row][col].classList.add(my_color+'-sample')
+            }
+        } else {
+            document.querySelectorAll('.'+my_color+'-sample').forEach(cell => {
+                cell.classList.remove(my_color+'-sample');
+            });
+        }
+    });
+
+    //board_elements[0][0].
+    gameboard.addEventListener('mouseleave', (e) => {
+        document.querySelectorAll('.'+my_color+'-sample').forEach(cell => {
+            cell.classList.remove(my_color+'-sample');
+        });
+    });
 })
 
 // Get next available row in column
