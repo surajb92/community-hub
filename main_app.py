@@ -1,5 +1,5 @@
 import os
-import psycopg
+#import psycopg
 import random
 
 from sys import exit
@@ -316,13 +316,14 @@ def chatroom():
 @app.route('/game/connect4', methods=["GET", "POST"])
 def connect4_page():
     uname = session.get('uname')
-    game = session.get('game')
-    if not game:
+    g_id = session.get('game')
+    game = games.get(g_id)
+    if not g_id:
         return redirect(url_for('home'))
-    elif not games.get(game):
+    elif not game:
         del session['game']
         return redirect(url_for('home'))
-    return render_template("connect4.html",user=uname,board=games.get(game).get_board(), myturn=games.get(game).my_turn(uname))
+    return render_template("connect4.html",user=uname,board=game.get_board(), myturn=game.my_turn(uname),mycolor=game.my_color(uname))
 
 # ------------------------------
 #   API-only Routes
