@@ -13,6 +13,7 @@ const my_color = {{ mycolor | tojson }} === 1 ? 'yellow' : 'red';
 var my_turn = {{ myturn | tojson }};
 var board = {{ board | tojson }};
 </script>
+<script src="{{ url_for('static', filename='js/useful_functions.js') }}"></script>
 <script src="{{ url_for('static', filename='js/connect4.js') }}"></script>
 {% endblock %}
 
@@ -23,4 +24,5 @@ var board = {{ board | tojson }};
 	<div id="opp_turn" class="hidden"><h2>Opponent's turn</h2></div>
 </div>
 <div id="gameboard"></div>
+<div style="text-align: center;"><button class="hidden" style="font-size: 20px;" id="goback" onclick="window.location.href='/room'">Return to Room</button></div>
 {% endblock %}
