@@ -76,23 +76,28 @@ document.addEventListener('DOMContentLoaded', function() {
     for (let row = 0; row < 6; row++) {
         rowset = []
         for (let col = 0; col < 7; col++) {
+            const cellwall = document.createElement('div');
+            cellwall.classList.add('cellwall');
+            cellwall.dataset.row = row;
+            cellwall.dataset.col = col;
+            cellwall.dataset.fill = board[row][col];
             const cell = document.createElement('div');
             cell.classList.add('cell');
             cell.dataset.row = row;
             cell.dataset.col = col;
-            cell.dataset.fill = board[row][col];
-            if (cell.dataset.fill == 1) {
+            if (cellwall.dataset.fill == 1) {
                 cell.classList.add('yellow');
-            } else if (cell.dataset.fill == 2) {
+            } else if (cellwall.dataset.fill == 2) {
                 cell.classList.add('red');
             }
+            cellwall.appendChild(cell);
             rowset.push(cell);
-            gameboard.appendChild(cell);
+            gameboard.appendChild(cellwall);
         }
         board_elements.push(rowset);
     }
     gameboard.addEventListener('click', (e) => {
-        if (e.target.classList.contains('cell') && my_turn) {
+        if ((e.target.classList.contains('cellwall') || e.target.classList.contains('cell')) && my_turn) {
             const col = parseInt(e.target.dataset.col);
             const row = getNextRow(col);
             if (row !== -1) {
@@ -105,7 +110,7 @@ document.addEventListener('DOMContentLoaded', function() {
     })
 
     gameboard.addEventListener('mouseover', (e) => {
-        if (e.target.classList.contains('cell') && my_turn) {
+        if ((e.target.classList.contains('cellwall') || e.target.classList.contains('cell')) && my_turn) {
             const col = parseInt(e.target.dataset.col);
             const row = getNextRow(col);
             if (row !== -1) {
@@ -118,7 +123,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    gameboard.addEventListener('mouseleave', (e) => {
+    gameboard.addEventListener('mouseleave', () => {
         document.querySelectorAll('.'+my_color+'-sample').forEach(cell => {
             cell.classList.remove(my_color+'-sample');
         });
