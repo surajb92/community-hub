@@ -60,10 +60,7 @@ socketio.on("invite-c4-remove", function(data) {
         peerinv.remove();
     if (data.rejected) {
         socketio.emit("invite-c4-reject-ack");
-        dbox = createDialogBox("Your invite was rejected by "+data.peer, 'ok');
-        dbox.ok.addEventListener('click', function() {
-            dbox.overlay.remove();
-        })
+        dbox = createDialogBox("Your invite was rejected by "+data.peer);
     }
 })
 
@@ -106,35 +103,6 @@ function startCooldown(cooldown) {
             startCooldown(cooldown);
         }, 1000);
     }
-}
-
-function inviteMenu(userbtn,invpeer){
-    const overlay = document.createElement('div');
-    overlay.className = "basic-overlay";
-    overlay.style.display = "block";
-    const rect = userbtn.getBoundingClientRect();
-    overlay.addEventListener('click', function clickme () {
-        this.remove();
-    })
-    const mbox = document.createElement('div');
-    mbox.style.position = 'absolute';
-    mbox.style.left = `${rect.left - 120}px`;
-    mbox.style.top = `${rect.bottom}px`;
-    mbox.style.color = "black";
-
-    const inv1 = document.createElement('button');
-    inv1.innerHTML = 'Invite to Connect4';
-    inv1.addEventListener('click', function () {
-        socketio.emit("invite-c4", { peer : invpeer }, (response) => {
-            if (response.status) {
-                inviteWaiting('connect4', invpeer, response.gameid);
-            }
-        } );
-        
-    })
-    mbox.appendChild(inv1);
-    overlay.appendChild(mbox);
-    document.body.appendChild(overlay);
 }
 
 function createUserElement(user) {
@@ -398,6 +366,35 @@ function changeRoom(newroom) {
     });
 }
 
+function inviteMenu(userbtn,invpeer){
+    const overlay = document.createElement('div');
+    overlay.className = "basic-overlay";
+    overlay.style.display = "block";
+    const rect = userbtn.getBoundingClientRect();
+    overlay.addEventListener('click', function clickme () {
+        this.remove();
+    })
+    const mbox = document.createElement('div');
+    mbox.style.position = 'absolute';
+    mbox.style.left = `${rect.left - 120}px`;
+    mbox.style.top = `${rect.bottom}px`;
+    mbox.style.color = "black";
+
+    const inv1 = document.createElement('button');
+    inv1.innerHTML = 'Invite to Connect4';
+    inv1.addEventListener('click', function () {
+        socketio.emit("invite-c4", { peer : invpeer }, (response) => {
+            if (response.status) {
+                inviteWaiting('connect4', invpeer, response.gameid);
+            }
+        } );
+        
+    })
+    mbox.appendChild(inv1);
+    overlay.appendChild(mbox);
+    document.body.appendChild(overlay);
+}
+
 function inviteWaiting(game, peer, g_id) {
     dbox = createDialogBox(`Invited ${peer} to ${game}...<br>Awaiting response...<br><i class="fas fa-spinner fa-spin"></i>`,'cancel')
     dbox.overlay.id = "my_invite";
@@ -405,46 +402,4 @@ function inviteWaiting(game, peer, g_id) {
         dbox.overlay.remove();
         socketio.emit("invite-c4-canceled", { gameid: g_id });
     })
-}
-
-function createDialogBox(msg,format) {
-    var dbox = {};
-
-    const overlay = document.createElement('div');
-    const mbox = document.createElement('div');
-    const bbox = document.createElement('div');
-    const message = document.createElement('div');
-
-    message.style.textAlign = "center";
-    message.innerHTML = msg;
-    mbox.appendChild(message);
-    overlay.classList.add('basic-overlay','message-overlay','message-centered');
-    bbox.classList.add('message-centered');
-    mbox.appendChild(bbox);
-    overlay.appendChild(mbox);
-    document.body.appendChild(overlay);
-    dbox.overlay = overlay;
-    
-    if (format == "yesno") {
-        const yes = document.createElement('button');
-        const no = document.createElement('button');
-        yes.style.marginRight = "5px";
-        yes.innerHTML = "Yes";
-        no.innerHTML = "No";
-        bbox.appendChild(yes);
-        bbox.appendChild(no);
-        dbox.yes = yes;
-        dbox.no = no;
-    } else if (format == "cancel") {
-        const cancel = document.createElement('button');
-        cancel.innerHTML = "Cancel";
-        bbox.appendChild(cancel);
-        dbox.cancel = cancel;
-    } else if (format == "ok") {
-        const ok = document.createElement('button');
-        ok.innerHTML = "Ok";
-        bbox.appendChild(ok);
-        dbox.ok = ok;
-    }
-    return dbox;
 }

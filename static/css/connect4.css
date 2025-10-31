@@ -4,19 +4,19 @@
     grid-template-rows: repeat(6, 1fr);
     gap: 5px;
     background: #333;
-    padding: 5px;
+    
     border-radius: 10px;
     margin: 20px auto;
-    width: 420px;
-    height: 360px;
+    width: 504px;
+    height: 432px;
     cursor: pointer;
 }
 
-.column-hover {
+/*.column-hover {
     background: navy !important;
-    /*margin: 5px !important;*/
-    /* border-color: navy ! important;*/
-}
+    margin: 5px !important;
+    border-color: navy ! important;
+}*/
 
 .cell {
     background: gray;
@@ -30,3 +30,9 @@
 .cell.red-sample { background: rgba(255, 60, 60, 0.3); }
 .cell.yellow { background: yellow; }
 .cell.yellow-sample { background: rgba(255, 255, 60, 0.3); }
+
+.cell-glow {
+    border: 3px solid white;
+    -webkit-box-shadow: 0 0 10px 5px rgba(200, 200, 200, 0.7);
+    box-shadow: 0 0 10px 5px rgba(200, 200, 200, 0.7);
+}

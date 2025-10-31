@@ -1,30 +1,29 @@
 var socketio=io();
 var board_elements = [];
-
-/*window.addEventListener('beforeunload', function () {
-
-})*/
+var gameover = false;
 
 socketio.on("quit-game-server", function(data) {
     socketio.emit("quit-game-ack");
     if (uname !== data.who_quit) {
-        alert(data.who_quit+" has quit the game, you win!");
+        createDialogBox(data.who_quit+" has quit the game, you win!");
     }
     window.location.href = '/room';
 })
 
 socketio.on("c4-gameover", function(data) {
+    gameover = true;
     if(data.state == "win") {
+        win_glow(data.winline, data.winstart, data.wincolor);
         if (data.winner == uname) {
-            alert("You win !");
+            createDialogBox("You win !");
         } else {
-            alert("You lose !");
+            createDialogBox("You lose !");
         }
     } else {
-        alert("Game tied !");
+        createDialogBox("Game tied !");
     }
     socketio.emit("quit-game-ack");
-    window.location.href = '/room';
+    document.getElementById('goback').classList.remove('hidden');
 })
 
 socketio.on("move-made", function(data) {
@@ -41,6 +40,30 @@ function toggle_turn() {
     my_turn = !my_turn
     document.getElementById('your_turn').classList.toggle("hidden");
     document.getElementById('opp_turn').classList.toggle("hidden");
+}
+
+function win_glow(wline,wstart,wcolor) {
+    row = wstart[0];
+    col = wstart[1];
+    for (i=0;i<4;i++) {
+        const cell = board_elements[row][col];
+        cell.classList.add('cell-glow');
+        if (wcolor == 1)
+            cell.classList.add('yellow');
+        else
+            cell.classList.add('red');
+        if (wline==="ROW") {
+            row+=1;
+        } else if (wline==="COL") {
+            col+=1;
+        } else if (wline=="RDIAG") {
+            row+=1;
+            col+=1;
+        } else {
+            row+=1;
+            col-=1;
+        }
+    }
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -80,11 +103,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     })
-    for (i=0;i<7;i++) {
 
-    }
-
-    //board_elements[0][0]
     gameboard.addEventListener('mouseover', (e) => {
         if (e.target.classList.contains('cell') && my_turn) {
             const col = parseInt(e.target.dataset.col);
@@ -99,7 +118,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    //board_elements[0][0].
     gameboard.addEventListener('mouseleave', (e) => {
         document.querySelectorAll('.'+my_color+'-sample').forEach(cell => {
             cell.classList.remove(my_color+'-sample');
@@ -116,5 +134,8 @@ function getNextRow(col) {
 }
 
 function quit_game() {
-    socketio.emit("quit-game");
+    if (gameover)
+        window.location.href='/room';
+    else
+        socketio.emit("quit-game");
 }

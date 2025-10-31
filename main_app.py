@@ -112,16 +112,18 @@ class connect4Game():
         self.board = [[0]*self.MAXCOL for _ in range(self.MAXROW)]
         self.current_turn = self.player1
     
-    def get_peer(self):
-        return self.player2
-    def get_game(self):
-        return self.game
     def my_turn(self,username):
         return username == self.current_turn
     def my_color(self,username):
         return 1 if self.player1 == username else 2
+    def get_peer(self):
+        return self.player2
+    def get_game(self):
+        return self.game
     def get_board(self):
         return self.board
+    def get_win(self):        
+        return self.win if hasattr(self,'win') else None
     def valid_col(self,col):
         return True if self.board[0][col] == 0 else False
     def switch_turn(self):
@@ -133,28 +135,35 @@ class connect4Game():
     def calc_win(self,row,col,color):
         # Check if column connects 4
         c4=1
+        start=None
         for i in range(self.MAXROW-1):
             if self.board[i][col] == self.board[i+1][col] == color:
                 c4+=1
+                if not start:
+                    start = [i,col]
                 if c4 >= 4:
-                    print("Col win")
-                    return True
+                    return { 'result': True, 'line': "ROW", 'start': start }
             else:
                 c4=1
+                start=None
         
         # Check if row connects 4
         c4=1
+        start=None
         for i in range(self.MAXCOL-1):
             if self.board[row][i] == self.board[row][i+1] == color:
                 c4+=1
+                if not start:
+                    start = [row,i]
                 if c4 >= 4:
-                    print("Row win")
-                    return True
+                    return { 'result': True, 'line': "COL", 'start': start }
             else:
                 c4=1
+                start=None
         
         # Check if diagonal \ connects 4
         c4=1
+        start=None
         if col > row:
             r,c = 0,col-row
         elif row > col:
@@ -164,16 +173,19 @@ class connect4Game():
         while r < (self.MAXROW-1) and c < (self.MAXCOL-1):
             if self.board[r][c] == self.board[r+1][c+1] == color:
                 c4+=1
+                if not start:
+                    start = [r,c]
                 if c4 >= 4:
-                    print("diag \ win")
-                    return True
+                    return { 'result': True, 'line': "RDIAG", 'start': start }
             else:
                 c4=1
+                start=None
             r+=1
             c+=1
         
         #  Check if diagonal / connects 4
         c4=1
+        start=None
         max_col = self.MAXCOL-1
         if row+col > max_col:
             r,c = (row+col)-max_col,max_col
@@ -185,16 +197,18 @@ class connect4Game():
         while r < (self.MAXROW-1) and c > 0:
             if self.board[r][c] == self.board[r+1][c-1] == color:
                 c4+=1
+                if not start:
+                    start = [r,c]
                 if c4 >= 4:
-                    print("diag / win")
-                    return True
+                    return { 'result': True, 'line': "LDIAG", 'start': start }
             else:
                 c4=1
+                start=None
             r+=1
             c-=1
         
         # No connect4 yet
-        return False
+        return { 'result': False }
     
     def make_move(self, col):
         for i in range(self.MAXROW):
@@ -203,8 +217,10 @@ class connect4Game():
                 break
         self.board[i][col] = 1 if self.my_turn(self.player1) else 2
         self.movecount+=1
-        if self.calc_win(i,col,self.my_color(self.current_turn)):
+        w = self.calc_win(i,col,self.my_color(self.current_turn))
+        if w.get('result'):
             state = 'win'
+            self.win = w
         elif self.movecount >= self.MAXROW*self.MAXCOL:
             state = 'draw'
         else:
@@ -236,9 +252,9 @@ def pre_processor():
     if request.path.startswith('/gameapi/'):
         return
     g_id = session.get('game')
-    if g_id and not request.path.startswith('/game/'):
-        game = games.get(g_id).get_game()
-        return redirect(url_for(game+'_page'))
+    game = games.get(g_id)
+    if g_id and game and not request.path.startswith('/game/'):
+        return redirect(url_for(game.get_game()+'_page'))
 
 @app.route('/', methods=["GET", "POST"])
 def home():
@@ -456,7 +472,6 @@ def handle_message(payload):
 def handle_c4_inv_init(payload):
     uname = session.get('uname')
     peer = payload["peer"]
-    print(uname," has invited ",peer," to play connect4")
     gameid = uuid4()
     while gameid in games.keys():
         gameid = uuid4()
@@ -485,6 +500,7 @@ def handle_c4_inv_rejected(payload):
 
 @socketio.on('invite-c4-reject-ack')
 def handle_c4_inv_reject_ack():
+    del session['game']
     join_room(session.get('room'))
 
 @socketio.on('invite-c4-accepted')
@@ -515,8 +531,10 @@ def handle_c4_move(payload):
     if game.get_game() == "connect4" and game.my_turn(uname) and game.valid_col(col):
         state = game.make_move(col)
         if state == 'win':
+            win = game.get_win()
+            color = game.my_color(uname)
             del games[g_id]
-            emit('c4-gameover', { "state": state, "winner": uname }, room=g_id )
+            emit('c4-gameover', { "state": state, "winner": uname, "winline": win.get('line'), "winstart": win.get('start'), "wincolor": color }, room=g_id )
         elif state == 'draw':
             del games[g_id]
             emit('c4-gameover', { "state": state }, room=g_id )
