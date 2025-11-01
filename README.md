@@ -1,5 +1,5 @@
 # Community Hub
-Community hub page for chatting & other group activities (TBA).  
+Community hub page for chatting & other group activities.  
 Implemented using flask & socketio backend with html+javascript frontend.  
 [Site hosted here](https://www.surajb.in).
 
@@ -11,6 +11,10 @@ Implemented using flask & socketio backend with html+javascript frontend.
 - User registration functionality for full access & much shorter chat cooldown.
 - Can edit sent messages for 2 minutes after sending.
 - Displays online users in hub.
+- Invite users to play games (just 1 for now).
+
+## Connect 4
+- Multiplayer connect4 game implemented, processing handled serverside.
 
 ## For deployment
 Set up a python virtual environment and install the packages stored in "requirements.txt" (pip install -r requirements.txt).  
