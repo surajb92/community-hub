@@ -17,7 +17,7 @@ var online_users = {{ online | tojson }};
 {% block body %}
 <h1 id="chattitle" style="text-align: center">Main Hub</h1>
 <div class="chat-container">
-	<div class="chat-section" style="width: 10%;">
+	<div class="chat-section" style="width: 20%;">
 		<button class="room-button" id="btn-general" onclick="changeRoom('general')">General Chat</button><br><br>
 		{% if usertype == 'registered' %}
 		<button class="room-button" id="btn-weebchat" onclick="changeRoom('weebchat')">Anime | Manga | Manhwa etc.</button>
@@ -25,21 +25,21 @@ var online_users = {{ online | tojson }};
 		<button class="room-button" id="btn-politics" onclick="changeRoom('politics')">Politics (be nice)</button>
 		{% endif %}
 	</div>
-	<div class="chat-section" style="width: 70%;">
+	<div class="chat-section" style="width: 60%;">
 		<div class="chat-list" id="general"></div>
 		<div class="chat-list" id="weebchat"></div>
 		<div class="chat-list" id="music"></div>
 		<div class="chat-list" id="politics"></div>
-		<div id="userchatbox" style="display:flex; flex-direction:row; padding: 10px; margin-top:auto;">
-			<label class="unselectable" style="align-self:center; margin-right:5px;">{{user}}:</label>
-			<input class="chat-txtbox" type="text" placeholder="Enter message.." id="userchat" name="userchat" />
-			<button type="submit" class="chat-sendbutton" id="send-btn" onclick="sendMessage()">Send</button>
-		</div>
 	</div>
 	<div class="chat-section">
 		<div style="text-align: center; font-weight: bold;">Online Users</div>
 		<div id ="user-list" class="user-list"></div>
 	</div>
+</div>
+<div id="userchatbox" style="display:flex; flex-direction:row; padding: 10px; background-color: rgb(30, 30, 30); border-radius: 10px;">
+	<label class="unselectable" style="align-self:center; margin-right:5px;">{{user}}:</label>
+	<input class="chat-txtbox" type="text" placeholder="Enter message.." id="userchat" name="userchat" />
+	<button type="submit" class="chat-sendbutton" id="send-btn" onclick="sendMessage()">Send</button>
 </div>
 <script src="{{ url_for('static', filename='js/login_handler.js') }}"></script>
 {% endblock %}
