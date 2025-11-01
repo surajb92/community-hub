@@ -249,7 +249,7 @@ def pre_processor():
     # VERY IMPORTANT that this statement exists, messes up css and js references otherwise
     if request.path.startswith('/static/'):
         return
-    if request.path.startswith('/gameapi/'):
+    if request.path.startswith('/gameapi/'): # In case it's needed in the future
         return
     g_id = session.get('game')
     game = games.get(g_id)
@@ -520,6 +520,7 @@ def handle_quit_game():
 
 @socketio.on('quit-game-ack')
 def handle_quit_game_ack():
+    join_room(session.get('room'))
     del session['game']
 
 @socketio.on('c4-move')
