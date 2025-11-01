@@ -24,7 +24,7 @@ socketio.on("sendmsg", function (chat) {
 socketio.on("user_connect", function(data) {
     user_list = document.getElementById('user-list');
     for (u of user_list.children) {
-        if (u.id == data.user)
+        if (u.id == 'user-ele-'+data.user)
             return;
     }
     createUserElement(data.user);
