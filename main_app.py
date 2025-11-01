@@ -534,10 +534,10 @@ def handle_c4_move(payload):
             win = game.get_win()
             color = game.my_color(uname)
             del games[g_id]
-            emit('c4-gameover', { "state": state, "winner": uname, "winline": win.get('line'), "winstart": win.get('start'), "wincolor": color }, room=g_id )
+            emit('c4-gameover', { "state": state, "column": col, "color": color, "winline": win.get('line'), "winstart": win.get('start') }, room=g_id )
         elif state == 'draw':
             del games[g_id]
-            emit('c4-gameover', { "state": state }, room=g_id )
+            emit('c4-gameover', { "state": state, "column": col, "color": color }, room=g_id )
         else:
             color = game.my_color(uname)
             game.switch_turn()
