@@ -1,22 +1,36 @@
 var socketio=io();
 var board_elements = [];
 var gameover = false;
+var touchinput = false;
+var hovercell = null;
 
 socketio.on("quit-game-server", function(data) {
     socketio.emit("quit-game-ack");
     if (uname !== data.who_quit) {
-        createDialogBox(data.who_quit+" has quit the game, you win!");
+        dbox = createDialogBox(data.who_quit+" has quit the game, you win!");
+        dbox.ok.addEventListener('click', () => {
+            window.location.href = '/room';
+        })
+    } else {
+        window.location.href = '/room';
     }
-    window.location.href = '/room';
 })
 
 socketio.on("c4-gameover", function(data) {
     gameover = true;
+    const col = data.column;
+    const row = getNextRow(col);
+    const cell = board_elements[row][col];
+    const wincolor = data.color === 1 ? 'yellow' : 'red';
+    cell.classList.add(wincolor);
+    board[row][col]=data.color;
     if(data.state == "win") {
-        win_glow(data.winline, data.winstart, data.wincolor);
-        if (data.winner == uname) {
+        win_glow(data.winline, data.winstart);
+        if (wincolor === my_color) {
+            document.getElementById('your_turn').innerHTML="<h2>You win!</h2>";
             createDialogBox("You win !");
         } else {
+            document.getElementById('opp_turn').innerHTML="<h2>Opponent wins..</h2>";
             createDialogBox("You lose !");
         }
     } else {
@@ -31,7 +45,6 @@ socketio.on("move-made", function(data) {
     row = getNextRow(data.column);
     const cell = board_elements[row][col];
     board[row][col] = data.color;
-    cell.dataset.fill = data.color;
     data.color === 1 ? cell.classList.add('yellow') : cell.classList.add('red');
     toggle_turn();
 })
@@ -42,16 +55,12 @@ function toggle_turn() {
     document.getElementById('opp_turn').classList.toggle("hidden");
 }
 
-function win_glow(wline,wstart,wcolor) {
+function win_glow(wline,wstart) {
     row = wstart[0];
     col = wstart[1];
     for (i=0;i<4;i++) {
         const cell = board_elements[row][col];
         cell.classList.add('cell-glow');
-        if (wcolor == 1)
-            cell.classList.add('yellow');
-        else
-            cell.classList.add('red');
         if (wline==="ROW") {
             row+=1;
         } else if (wline==="COL") {
@@ -80,14 +89,13 @@ document.addEventListener('DOMContentLoaded', function() {
             cellwall.classList.add('cellwall');
             cellwall.dataset.row = row;
             cellwall.dataset.col = col;
-            cellwall.dataset.fill = board[row][col];
             const cell = document.createElement('div');
             cell.classList.add('cell');
             cell.dataset.row = row;
             cell.dataset.col = col;
-            if (cellwall.dataset.fill == 1) {
+            if (board[row][col] == 1) {
                 cell.classList.add('yellow');
-            } else if (cellwall.dataset.fill == 2) {
+            } else if (board[row][col] == 2) {
                 cell.classList.add('red');
             }
             cellwall.appendChild(cell);
@@ -96,39 +104,84 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         board_elements.push(rowset);
     }
-    gameboard.addEventListener('click', (e) => {
-        if ((e.target.classList.contains('cellwall') || e.target.classList.contains('cell')) && my_turn) {
-            const col = parseInt(e.target.dataset.col);
-            const row = getNextRow(col);
-            if (row !== -1) {
-                document.querySelectorAll('.'+my_color+'-sample').forEach(cell => {
-                    cell.classList.remove(my_color+'-sample');
-                });
-                socketio.emit("c4-move", { column: col } )
-            }
-        }
-    })
+    
+    // Mouse listeners
+    gameboard.addEventListener('click', () => {
+        if (my_turn)
+            move_make();
+    });
 
-    gameboard.addEventListener('mouseover', (e) => {
+    gameboard.addEventListener('mousemove', (e) => {
         if ((e.target.classList.contains('cellwall') || e.target.classList.contains('cell')) && my_turn) {
-            const col = parseInt(e.target.dataset.col);
-            const row = getNextRow(col);
-            if (row !== -1) {
-                board_elements[row][col].classList.add(my_color+'-sample')
-            }
+           move_hover(e.target);
         } else {
-            document.querySelectorAll('.'+my_color+'-sample').forEach(cell => {
-                cell.classList.remove(my_color+'-sample');
-            });
+            move_unhover();
         }
     });
+    gameboard.addEventListener('mouseleave', move_unhover);
 
-    gameboard.addEventListener('mouseleave', () => {
-        document.querySelectorAll('.'+my_color+'-sample').forEach(cell => {
-            cell.classList.remove(my_color+'-sample');
+    // Adding listeners for touch (mobile, tablets etc.)
+    if ('ontouchstart' in window || navigator.maxTouchPoints > 0 || window.navigator.msMaxTouchPoints > 0) {
+        gameboard.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const cell = document.elementFromPoint(touch.clientX,touch.clientY);
+            if (my_turn && cell && (cell.classList.contains('cellwall') || cell.classList.contains('cell'))) {
+                move_hover(cell);
+                touchinput = true;
+            }
         });
-    });
+        gameboard.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const cell = document.elementFromPoint(touch.clientX,touch.clientY);
+            if (cell && (cell.classList.contains('cellwall') || cell.classList.contains('cell'))) {
+                touchinput = true;
+            } else {
+                touchinput = false;
+            }
+            if (my_turn && touchinput)
+                move_hover(cell);
+            else
+                move_unhover();
+        });
+        gameboard.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            if (my_turn && touchinput) {
+                move_make();
+                touchinput = false;
+            }
+        });
+    }
 })
+
+function move_make() {
+    if (hovercell) {
+        const col = parseInt(hovercell.dataset.col);
+        move_unhover();
+        socketio.emit("c4-move", { column: col } )
+    }
+}
+
+function move_hover(cell) {
+    const col = parseInt(cell.dataset.col);
+    const row = getNextRow(col);
+    if (row !== -1) {
+        if (hovercell && hovercell.dataset.col !== col)
+            move_unhover();
+        hovercell = board_elements[row][col];
+        hovercell.classList.add(my_color+'-sample');
+    } else {
+        move_unhover();
+    }
+}
+
+function move_unhover() {
+    if (hovercell) {
+        hovercell.classList.remove(my_color+'-sample')
+        hovercell = null;
+    }
+}
 
 // Get next available row in column
 function getNextRow(col) {
@@ -141,6 +194,13 @@ function getNextRow(col) {
 function quit_game() {
     if (gameover)
         window.location.href='/room';
-    else
-        socketio.emit("quit-game");
+    else {
+        dbox = createDialogBox("Are you sure you want to quit the game?",'yesno');
+        dbox.yes.addEventListener('click', () => {
+            socketio.emit("quit-game");
+        })
+        dbox.no.addEventListener('click', () => {
+            dbox.overlay.remove();
+        })
+    }
 }
