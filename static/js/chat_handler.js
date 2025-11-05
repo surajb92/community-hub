@@ -38,20 +38,20 @@ socketio.on("user_disconnect", function(data) {
     }
 })
 
-socketio.on("invite-c4-incoming", function(data) {
-    dbox = createDialogBox(`${data.peer} has invited you to play Connect4!<br>Accept?`,'yesno');
+socketio.on("invite-incoming", function(data) {
+    dbox = createDialogBox(`${data.peer} has invited you to play ${data.game}!<br>Accept?`,'yesno');
     dbox.overlay.id = "peer_invite";
     dbox.no.addEventListener('click', function () {
         dbox.overlay.remove();
-        socketio.emit("invite-c4-rejected", { gameid : data.gameid });
+        socketio.emit("invite-rejected", { gameid : data.gameid });
     })
     dbox.yes.addEventListener('click', function () {
         dbox.overlay.remove();
-        socketio.emit("invite-c4-accepted", { gameid : data.gameid });
+        socketio.emit("invite-accepted", { gameid : data.gameid });
     })
 })
 
-socketio.on("invite-c4-remove", function(data) {
+socketio.on("invite-remove", function(data) {
     myinv = document.getElementById('my_invite');
     if (myinv)
         myinv.remove();
@@ -59,13 +59,13 @@ socketio.on("invite-c4-remove", function(data) {
     if (peerinv)
         peerinv.remove();
     if (data.rejected) {
-        socketio.emit("invite-c4-reject-ack");
+        socketio.emit("invite-reject-ack");
         dbox = createDialogBox("Your invite was rejected by "+data.peer);
     }
 })
 
-socketio.on("c4-start-game", function() {
-    window.location.href = "/game/connect4";
+socketio.on("start-game", function(data) {
+    window.location.href = `/game/${data.game}`;
 })
 
 document.addEventListener('DOMContentLoaded', function(event) {
@@ -383,13 +383,14 @@ function inviteMenu(userbtn,invpeer){
     const inv1 = document.createElement('button');
     inv1.innerHTML = 'Invite to Connect4';
     inv1.addEventListener('click', function () {
-        socketio.emit("invite-c4", { peer : invpeer }, (response) => {
+        const game = 'connect4';
+        socketio.emit("game-invite", { game: game, peer : invpeer }, (response) => {
             if (response.status) {
-                inviteWaiting('connect4', invpeer, response.gameid);
+                inviteWaiting(game, invpeer, response.gameid);
             }
         } );
-        
     })
+    
     mbox.appendChild(inv1);
     overlay.appendChild(mbox);
     document.body.appendChild(overlay);
@@ -400,6 +401,6 @@ function inviteWaiting(game, peer, g_id) {
     dbox.overlay.id = "my_invite";
     dbox.cancel.addEventListener('click', function () {
         dbox.overlay.remove();
-        socketio.emit("invite-c4-canceled", { gameid: g_id });
+        socketio.emit("invite-canceled", { gameid: g_id });
     })
 }

@@ -13,7 +13,8 @@ const my_color = {{ mycolor | tojson }} === 1 ? 'yellow' : 'red';
 var my_turn = {{ myturn | tojson }};
 var board = {{ board | tojson }};
 </script>
-<script src="{{ url_for('static', filename='js/useful_functions.js') }}"></script>
+<script src="{{ url_for('static', filename='js/_game_methods.js') }}"></script>
+<script src="{{ url_for('static', filename='js/_ui_methods.js') }}"></script>
 <script src="{{ url_for('static', filename='js/connect4.js') }}"></script>
 {% endblock %}
 

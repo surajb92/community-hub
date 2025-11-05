@@ -10,7 +10,7 @@ var room = '{{room}}';
 var init_chat = {{ chats | tojson }};
 var online_users = {{ online | tojson }};
 </script>
-<script src="{{ url_for('static', filename='js/useful_functions.js') }}"></script>
+<script src="{{ url_for('static', filename='js/_ui_methods.js') }}"></script>
 <script src="{{ url_for('static', filename='js/chat_handler.js') }}"></script>
 {% endblock %}
 

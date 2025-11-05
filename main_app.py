@@ -99,14 +99,42 @@ class chatSchema(ms.SQLAlchemyAutoSchema):
     def timezone_aware(self,chatobj):
         return chatobj.timestamp.astimezone()
 
-class connect4Game():
-    def __init__(self, g_id, host, peer):
+# Check chat cooldown for guest users
+def cdcheck():
+    USER_CHAT_COOLDOWN = 5
+    GUEST_CHAT_COOLDOWN = 30
+    last_ts = session.get('last_msg_ts')
+    if last_ts:
+        if session.get('utype') == 'guest':
+            return GUEST_CHAT_COOLDOWN-(datetime.now(timezone.utc) - last_ts).seconds
+        else:
+            return USER_CHAT_COOLDOWN-(datetime.now(timezone.utc) - last_ts).seconds
+    else:
+        return -1
+
+# ------------------------------
+#   Game classes
+# ------------------------------
+
+class baseGame():
+    def __init__(self, g_id, game, host, peer):
+        self.gameid = g_id
+        self.game = game
+        self.player1 = host
+        self.player2 = peer
+    def get_game(self):
+        return self.game
+    def get_peer(self):
+        return self.player2
+
+class connect4Game(baseGame):
+    """def __init__(self, g_id, host, peer):
         self.gameid = g_id
         self.game = "connect4"
         self.player1 = host
-        self.player2 = peer
-        self.movecount = 0
+        self.player2 = peer"""
     def game_start(self):
+        self.movecount = 0
         self.MAXROW = 6
         self.MAXCOL = 7
         self.board = [[0]*self.MAXCOL for _ in range(self.MAXROW)]
@@ -116,10 +144,6 @@ class connect4Game():
         return username == self.current_turn
     def my_color(self,username):
         return 1 if self.player1 == username else 2
-    def get_peer(self):
-        return self.player2
-    def get_game(self):
-        return self.game
     def get_board(self):
         return self.board
     def get_win(self):        
@@ -226,19 +250,6 @@ class connect4Game():
         else:
             state = 'continue'
         return state
-
-# Check chat cooldown for guest users
-def cdcheck():
-    USER_CHAT_COOLDOWN = 5
-    GUEST_CHAT_COOLDOWN = 30
-    last_ts = session.get('last_msg_ts')
-    if last_ts:
-        if session.get('utype') == 'guest':
-            return GUEST_CHAT_COOLDOWN-(datetime.now(timezone.utc) - last_ts).seconds
-        else:
-            return USER_CHAT_COOLDOWN-(datetime.now(timezone.utc) - last_ts).seconds
-    else:
-        return -1
 
 # ------------------------------
 #   Main URL Routes
@@ -424,7 +435,7 @@ def handle_disconnect():
 
 @socketio.on('changeroom')
 def handle_changeroom(payload):
-    newroom = payload["new_room"]
+    newroom = payload.get("new_room")
     utype = session.get('utype')
     if newroom not in ROOM_LIST:
         return {'status':False}
@@ -454,62 +465,65 @@ def handle_message(payload):
             del session['last_msg_ts']
     else:
         session['last_msg_ts'] = ts
-    newmsg = chat_msg(sender=uname,message=payload["message"],timestamp=ts,room=room)
+    newmsg = chat_msg(sender=uname,message=payload.get("message"),timestamp=ts,room=room)
     session['chatcount'][room] += 1
     db.session.add(newmsg)
     db.session.commit()
     msg = {
         "sender": uname,
-        "message": payload["message"],
+        "message": payload.get("message"),
         "timestamp": ts.isoformat(),
         "id": newmsg.id
     }
     emit('sendmsg', msg, to=room)
 
-# Connect4 game sockets
+# Game socket events
 # ------------------------------
-@socketio.on('invite-c4')
-def handle_c4_inv_init(payload):
+@socketio.on('game-invite')
+def handle_inv_init(payload):
     uname = session.get('uname')
-    peer = payload["peer"]
+    peer = payload.get("peer")
+    game = payload.get("game")
     gameid = uuid4()
     while gameid in games.keys():
         gameid = uuid4()
-    games[gameid] = connect4Game(gameid,uname,peer)
+    if game == 'connect4':
+        games[gameid] = connect4Game(gameid,game,uname,peer)
     session['game'] = gameid
     join_room(gameid)
-    emit('invite-c4-incoming', { "peer": uname, "gameid" : str(gameid) }, room=online_users.get(peer))
+    emit('invite-incoming', { "peer": uname, "game": game, "gameid" : str(gameid) }, room=online_users.get(peer))
     return {'status':True, 'gameid':str(gameid) }
 
-@socketio.on('invite-c4-canceled')
-def handle_c4_inv_canceled(payload):
+@socketio.on('invite-canceled')
+def handle_inv_canceled(payload):
     join_room(session.get('room'))
     g_id = session.get('game')
     del session['game']
     if games.get(g_id):
-        emit('invite-c4-remove', { "rejected": False }, room=online_users.get(games.get(g_id).get_peer()))
+        emit('invite-remove', { "rejected": False }, room=online_users.get(games.get(g_id).get_peer()))
         del games[g_id]
 
-@socketio.on('invite-c4-rejected')
-def handle_c4_inv_rejected(payload):
-    g_id = UUID(payload["gameid"])
+@socketio.on('invite-rejected')
+def handle_inv_rejected(payload):
+    g_id = UUID(payload.get("gameid"))
     uname = session.get('uname')
     if games.get(g_id):
-        emit('invite-c4-remove', { "rejected": True, "peer": uname }, room=g_id)
+        emit('invite-remove', { "rejected": True, "peer": uname }, room=g_id)
         del games[g_id]
 
-@socketio.on('invite-c4-reject-ack')
-def handle_c4_inv_reject_ack():
+@socketio.on('invite-reject-ack')
+def handle_inv_reject_ack():
     del session['game']
     join_room(session.get('room'))
 
-@socketio.on('invite-c4-accepted')
-def handle_c4_inv_accept(payload):
-    g_id = UUID(payload["gameid"])
+@socketio.on('invite-accepted')
+def handle_inv_accept(payload):
+    g_id = UUID(payload.get("gameid"))
     join_room(g_id)
     session['game'] = g_id
-    games.get(g_id).game_start()
-    emit('c4-start-game', {}, room=g_id)
+    game = games.get(g_id)
+    game.game_start()
+    emit('start-game', { "game": game.get_game() }, room=g_id )
 
 @socketio.on('quit-game')
 def handle_quit_game():
@@ -523,12 +537,14 @@ def handle_quit_game_ack():
     join_room(session.get('room'))
     del session['game']
 
+# Connect4 game socket events
+# ------------------------------
 @socketio.on('c4-move')
 def handle_c4_move(payload):
     uname = session.get('uname')
     g_id = session.get('game')
     game = games.get(g_id)
-    col = payload["column"]
+    col = payload.get("column")
     if game.get_game() == "connect4" and game.my_turn(uname) and game.valid_col(col):
         state = game.make_move(col)
         if state == 'win':
