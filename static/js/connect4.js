@@ -1,5 +1,4 @@
 var board_elements = [];
-var gameover = false;
 var touchinput = false;
 var hovercell = null;
 

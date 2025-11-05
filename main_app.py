@@ -1,5 +1,4 @@
 import os
-#import psycopg
 import random
 
 from sys import exit
@@ -128,11 +127,6 @@ class baseGame():
         return self.player2
 
 class connect4Game(baseGame):
-    """def __init__(self, g_id, host, peer):
-        self.gameid = g_id
-        self.game = "connect4"
-        self.player1 = host
-        self.player2 = peer"""
     def game_start(self):
         self.movecount = 0
         self.MAXROW = 6
@@ -251,6 +245,10 @@ class connect4Game(baseGame):
             state = 'continue'
         return state
 
+class typwarsGame(baseGame):
+    def game_start(self):
+        pass
+
 # ------------------------------
 #   Main URL Routes
 # ------------------------------
@@ -351,6 +349,11 @@ def connect4_page():
         del session['game']
         return redirect(url_for('home'))
     return render_template("connect4.html",user=uname,board=game.get_board(), myturn=game.my_turn(uname),mycolor=game.my_color(uname))
+
+@app.route('/game/typwars', methods=["GET", "POST"])
+def typwars_page():
+    uname = session.get('uname')
+    return render_template("typwars.html",user=uname)
 
 # ------------------------------
 #   API-only Routes
@@ -489,6 +492,8 @@ def handle_inv_init(payload):
         gameid = uuid4()
     if game == 'connect4':
         games[gameid] = connect4Game(gameid,game,uname,peer)
+    elif game == 'typwars':
+        games[gameid] = typwarsGame(gameid,game,uname,peer)
     session['game'] = gameid
     join_room(gameid)
     emit('invite-incoming', { "peer": uname, "game": game, "gameid" : str(gameid) }, room=online_users.get(peer))

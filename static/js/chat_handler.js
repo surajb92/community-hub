@@ -383,15 +383,25 @@ function inviteMenu(userbtn,invpeer){
     const inv1 = document.createElement('button');
     inv1.innerHTML = 'Invite to Connect4';
     inv1.addEventListener('click', function () {
-        const game = 'connect4';
-        socketio.emit("game-invite", { game: game, peer : invpeer }, (response) => {
+        socketio.emit("game-invite", { game: 'connect4', peer : invpeer }, (response) => {
             if (response.status) {
-                inviteWaiting(game, invpeer, response.gameid);
+                inviteWaiting('connect4', invpeer, response.gameid);
             }
         } );
     })
-    
+    const inv2 = document.createElement('button');
+    inv2.innerHTML = 'Invite to Typ Wars';
+    inv2.addEventListener('click', function () {
+        socketio.emit("game-invite", { game: 'typwars', peer : invpeer }, (response) => {
+            if (response.status) {
+                inviteWaiting('typwars', invpeer, response.gameid);
+            }
+        } );
+    })
+
+
     mbox.appendChild(inv1);
+    mbox.appendChild(inv2);
     overlay.appendChild(mbox);
     document.body.appendChild(overlay);
 }

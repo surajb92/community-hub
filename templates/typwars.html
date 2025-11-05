@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block topbar %}
+<button style="display:flex; align-items:center;" onclick="quit_game()"><i class="fas fa-close" style="font-size:16px; color:red;"></i>Quit Game</button>
+{% endblock %}
+
+{% block head %}
+<title>Connect 4</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/connect4.css') }}">
+<script>
+const uname = "{{ user }}";
+</script>
+<script src="{{ url_for('static', filename='js/_game_methods.js') }}"></script>
+<script src="{{ url_for('static', filename='js/_ui_methods.js') }}"></script>
+<script src="{{ url_for('static', filename='js/typwars.js') }}"></script>
+{% endblock %}
+
+{% block body %}
+<h1 style="text-align: center;">Welcome, {{ user }}, let's play Typ Wars!</h1>
+<div style="display:flex; justify-content:center;">
+</div>
+<div style="text-align: center;"><button class="hidden" style="font-size: 20px;" id="goback" onclick="window.location.href='/room'">Return to Room</button></div>
+{% endblock %}

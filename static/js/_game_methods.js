@@ -1,4 +1,5 @@
 var socketio=io();
+var gameover = false;
 
 socketio.on("quit-game-server", function(data) {
     socketio.emit("quit-game-ack");
