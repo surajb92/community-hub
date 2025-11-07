@@ -1,5 +1,7 @@
 import os
 import random
+import threading
+import time
 
 from sys import exit
 from string import ascii_letters
@@ -245,9 +247,94 @@ class connect4Game(baseGame):
             state = 'continue'
         return state
 
+class typwarsState():
+    def __init__(self):
+        self.screen_words = {}
+        self._tcount = 1
+        self.speed = 1
+        self.score = 0
+        self.lives = 3
+        self.dead = False
+        self.set_new_row()
+        self.i=0
+    def set_new_row(self):
+        self.cols = [_ for _ in range(1,6+1)]
+        random.shuffle(self.cols)
+    def new_word(self,word,opp=False):
+        self.screen_words[word.lower()] = [45,self.cols.pop(),opp]
+        if not self.cols:
+            self.set_new_row()
+    def isdead(self):
+        return self.dead
+    def tick(self):
+        self._tcount+=1
+        if self._tcount > 10:
+            self._tcount = 1
+        if (self._tcount % (11-self.speed) == 0):
+            self.tick_words()
+            self.i+=1
+    def tick_words(self):
+        delwords = []
+        print(self.screen_words)
+        for word in self.screen_words:
+            self.screen_words[word][0]-=1
+            if self.screen_words[word][0] <= 0:
+                # word reached bottom !
+                delwords.append(word)
+        for w in delwords:
+            self.lives-=1
+            del self.screen_words[w]
+        if self.lives <= 0:
+            self.lives = 0
+            self.dead = True
+    def get_state(self):
+        return { 'words': self.screen_words, 'speed': self.speed, 'score': self.score, 'lives': self.lives }
+
 class typwarsGame(baseGame):
     def game_start(self):
-        pass
+        self.dictwords = []
+        self.p1 = typwarsState()
+        self.p2 = typwarsState()
+        self.p1.new_word("Roses")
+        self.p1.new_word("Red")
+        self.p2.new_word("Violets")
+        self.p2.new_word("Blue")
+        print(self.p1.get_state())
+        print(self.p2.get_state())
+        self.loopthread = threading.Thread(target=self.run_loop)
+        self.stopgame = threading.Event()
+        self.gameover = False
+        with open("static/data/words.txt","r") as f:
+            for i in f:
+                self.dictwords.append(i[:-1].lower())
+        self.loopthread.start()
+    def get_state(self,user):
+        if self.player1 == user:
+            return self.p1.get_state()
+        else:
+            return self.p2.get_state()
+    def run_loop(self):
+        # Serverside game loop
+        while not self.stopgame.is_set():
+            self.p1.tick()
+            self.p2.tick()
+            if (self.p1.isdead() and self.p2.isdead()):
+                # tied!
+                self.endstate = ['tied']
+                break
+            elif self.p1.isdead():
+                self.endstate = ['win','p2']
+                break
+            elif self.p2.isdead():
+                self.endstate = ['win','p1']
+                break
+            time.sleep(0.1)
+        # Game loop ends = game over
+        self.gameover = True
+    def quit_game(self):
+        self.stopgame.set()
+        self.loopthread.join()
+        self.endstate = ['quit']
 
 # ------------------------------
 #   Main URL Routes
@@ -353,7 +440,14 @@ def connect4_page():
 @app.route('/game/typwars', methods=["GET", "POST"])
 def typwars_page():
     uname = session.get('uname')
-    return render_template("typwars.html",user=uname)
+    g_id = session.get('game')
+    game = games.get(g_id)
+    if not g_id:
+        return redirect(url_for('home'))
+    elif not game:
+        del session['game']
+        return redirect(url_for('home'))
+    return render_template("typwars.html",user=uname,field=game.get_state(uname))
 
 # ------------------------------
 #   API-only Routes
@@ -415,9 +509,10 @@ def edit_message():
 
 @socketio.on('connect')
 def handle_connect():
-    game = session.get('game')
-    if game:
-        join_room(game)
+    g_id = session.get('game')
+    game = games.get(g_id)
+    if g_id and game:
+        join_room(g_id)
         return
     
     uname = session.get('uname')
@@ -534,6 +629,9 @@ def handle_inv_accept(payload):
 def handle_quit_game():
     g_id = session.get('game')
     uname = session.get('uname')
+    game = games.get(g_id)
+    if game.get_game() == 'typwars': # Stop the gameloop before deleting
+        game.quit_game()
     del games[g_id]
     emit('quit-game-server', { "who_quit": uname }, room=g_id)
 

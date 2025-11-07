@@ -6,9 +6,10 @@
 
 {% block head %}
 <title>Connect 4</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='css/connect4.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/typwars.css') }}">
 <script>
 const uname = "{{ user }}";
+const field = {{ field | tojson }};
 </script>
 <script src="{{ url_for('static', filename='js/_game_methods.js') }}"></script>
 <script src="{{ url_for('static', filename='js/_ui_methods.js') }}"></script>
@@ -17,7 +18,9 @@ const uname = "{{ user }}";
 
 {% block body %}
 <h1 style="text-align: center;">Welcome, {{ user }}, let's play Typ Wars!</h1>
-<div style="display:flex; justify-content:center;">
+<div id="gamecontainer">
+    <div id="gamefield"></div>
+    <input class="wordfield" placeholder="Enter word here..."/>
 </div>
 <div style="text-align: center;"><button class="hidden" style="font-size: 20px;" id="goback" onclick="window.location.href='/room'">Return to Room</button></div>
 {% endblock %}
