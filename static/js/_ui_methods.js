@@ -28,11 +28,13 @@ function createDialogBox(msg,format="ok") {
         bbox.appendChild(no);
         dbox.yes = yes;
         dbox.no = no;
+        dbox.yes.focus();
     } else if (format == "cancel") {
         const cancel = document.createElement('button');
         cancel.innerHTML = "Cancel";
         bbox.appendChild(cancel);
         dbox.cancel = cancel;
+        dbox.cancel.focus();
     } else if (format == "ok") {
         const ok = document.createElement('button');
         ok.innerHTML = "Ok";
@@ -41,6 +43,7 @@ function createDialogBox(msg,format="ok") {
             overlay.remove();
         })
         dbox.ok = ok;
+        dbox.ok.focus();
     }
     return dbox;
 }
