@@ -127,6 +127,8 @@ class baseGame():
         return self.game
     def get_peer(self):
         return self.player2
+    def get_id(self):
+        return self.gameid
 
 class connect4Game(baseGame):
     def game_start(self):
@@ -257,13 +259,26 @@ class typwarsState():
         self.dead = False
         self.set_new_row()
         self.i=0
+    def get_screen_words(self):
+        return self.screen_words
+    def get_score(self):
+        return self.score
+    def get_lives(self):
+        return self.lives
     def set_new_row(self):
         self.cols = [_ for _ in range(1,6+1)]
         random.shuffle(self.cols)
     def new_word(self,word,opp=False):
-        self.screen_words[word.lower()] = [45,self.cols.pop(),opp]
+        wdata = [45,self.cols.pop(),opp]
+        self.screen_words[word.lower()] = wdata
         if not self.cols:
             self.set_new_row()
+        return wdata
+    def clear_word(self,word):
+        self.score+=2
+        del self.screen_words[word]
+    def sent_word(self):
+        self.score+=10
     def isdead(self):
         return self.dead
     def tick(self):
@@ -275,7 +290,6 @@ class typwarsState():
             self.i+=1
     def tick_words(self):
         delwords = []
-        print(self.screen_words)
         for word in self.screen_words:
             self.screen_words[word][0]-=1
             if self.screen_words[word][0] <= 0:
@@ -299,8 +313,6 @@ class typwarsGame(baseGame):
         self.p1.new_word("Red")
         self.p2.new_word("Violets")
         self.p2.new_word("Blue")
-        print(self.p1.get_state())
-        print(self.p2.get_state())
         self.loopthread = threading.Thread(target=self.run_loop)
         self.stopgame = threading.Event()
         self.gameover = False
@@ -310,9 +322,14 @@ class typwarsGame(baseGame):
         self.loopthread.start()
     def get_state(self,user):
         if self.player1 == user:
-            return self.p1.get_state()
+            state = self.p1.get_state()
+            state['oppscore'] = self.p2.get_score()
+            state['opplives'] = self.p2.get_lives()
         else:
-            return self.p2.get_state()
+            state = self.p2.get_state()
+            state['oppscore'] = self.p1.get_score()
+            state['opplives'] = self.p1.get_lives()
+        return state
     def run_loop(self):
         # Serverside game loop
         while not self.stopgame.is_set():
@@ -331,6 +348,35 @@ class typwarsGame(baseGame):
             time.sleep(0.1)
         # Game loop ends = game over
         self.gameover = True
+    def word_typed(self,user,word):
+        if self.player1 == user:
+            words = self.p1.get_screen_words()
+            if word in words:
+                self.p1.clear_word(word)
+                socketio.emit('tw-opp-word', {'user':self.player1}, room=self.get_id())
+                return True
+            elif word in self.dictwords:
+                self.p1.sent_word()
+                vals = self.p2.new_word(word,True)
+                self.send_word(self.player2,word,vals) # send clientside
+                return True
+            else:
+                return False
+        else:
+            words = self.p2.get_screen_words()
+            if word in words:
+                self.p2.clear_word(word)
+                socketio.emit('tw-opp-word', {'user':self.player2}, room=self.get_id())
+                return True
+            elif word in self.dictwords:
+                self.p2.sent_word()
+                vals = self.p1.new_word(word,True)
+                self.send_word(self.player1,word,vals) # send clientside
+                return True
+            else:
+                return False
+    def send_word(self,user,word,vals):
+        socketio.emit('tw-word-get', { 'user':user, 'word':word, 'vals':vals }, room=self.get_id())
     def quit_game(self):
         self.stopgame.set()
         self.loopthread.join()
@@ -662,6 +708,18 @@ def handle_c4_move(payload):
             color = game.my_color(uname)
             game.switch_turn()
             emit('move-made', { "column": col, "color": color }, room=g_id)
+
+# Typwars game socket events
+# ------------------------------
+@socketio.on('tw-word-typed')
+def handle_tw_typed(payload):
+    uname = session.get('uname')
+    game = games.get(session.get('game'))
+    valid_word = game.word_typed(uname,payload.get('word').lower())
+    if valid_word:
+        return {'status':True}
+    else:
+        return {'status':False}
 
 online_users = {}
 guests = []
