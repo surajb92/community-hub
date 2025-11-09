@@ -28,7 +28,7 @@ socketio.on("user_connect", function(data) {
             return;
     }
     createUserElement(data.user);
-})
+});
 
 socketio.on("user_disconnect", function(data) {
     user_list = document.getElementById('user-list');
@@ -36,7 +36,7 @@ socketio.on("user_disconnect", function(data) {
         if (u.id == 'user-ele-'+data.user)
             user_list.removeChild(u);
     }
-})
+});
 
 socketio.on("invite-incoming", function(data) {
     dbox = createDialogBox(`${data.peer} has invited you to play ${data.game}!<br>Accept?`,'yesno');
@@ -49,7 +49,7 @@ socketio.on("invite-incoming", function(data) {
         dbox.overlay.remove();
         socketio.emit("invite-accepted", { gameid : data.gameid });
     })
-})
+});
 
 socketio.on("invite-remove", function(data) {
     myinv = document.getElementById('my_invite');
@@ -62,11 +62,11 @@ socketio.on("invite-remove", function(data) {
         socketio.emit("invite-reject-ack");
         dbox = createDialogBox("Your invite was rejected by "+data.peer);
     }
-})
+});
 
 socketio.on("start-game", function(data) {
     window.location.href = `/game/${data.game}`;
-})
+});
 
 document.addEventListener('DOMContentLoaded', function(event) {
     var chat_list = document.getElementById(room);
@@ -238,7 +238,7 @@ function createChatElement(chat,justnow=false) {
 }
 
 function removeEdit(editref,chatid) {
-    msg = document.getElementById('edit-'+chatid)
+    msg = document.getElementById('edit-'+chatid);
     msg.removeAttribute('id');
     editref.remove();
 }
@@ -373,7 +373,7 @@ function inviteMenu(userbtn,invpeer){
     const rect = userbtn.getBoundingClientRect();
     overlay.addEventListener('click', function clickme () {
         this.remove();
-    })
+    });
     const mbox = document.createElement('div');
     mbox.style.position = 'absolute';
     mbox.style.left = `${rect.left - 120}px`;
@@ -388,7 +388,7 @@ function inviteMenu(userbtn,invpeer){
                 inviteWaiting('connect4', invpeer, response.gameid);
             }
         } );
-    })
+    });
     const inv2 = document.createElement('button');
     inv2.innerHTML = 'Invite to Typ Wars';
     inv2.addEventListener('click', function () {
@@ -397,9 +397,7 @@ function inviteMenu(userbtn,invpeer){
                 inviteWaiting('typwars', invpeer, response.gameid);
             }
         } );
-    })
-
-
+    });
     mbox.appendChild(inv1);
     mbox.appendChild(inv2);
     overlay.appendChild(mbox);
@@ -407,10 +405,10 @@ function inviteMenu(userbtn,invpeer){
 }
 
 function inviteWaiting(game, peer, g_id) {
-    dbox = createDialogBox(`Invited ${peer} to ${game}...<br>Awaiting response...<br><i class="fas fa-spinner fa-spin"></i>`,'cancel')
+    dbox = createDialogBox(`Invited ${peer} to ${game}...<br>Awaiting response...<br><i class="fas fa-spinner fa-spin"></i>`,'cancel');
     dbox.overlay.id = "my_invite";
     dbox.cancel.addEventListener('click', function () {
         dbox.overlay.remove();
         socketio.emit("invite-canceled", { gameid: g_id });
-    })
+    });
 }
