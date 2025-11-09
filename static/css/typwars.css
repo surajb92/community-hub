@@ -6,8 +6,6 @@
 }
 
 #gamefield {
-    /*grid-template-columns: repeat(6, 1fr);
-    grid-template-rows: repeat(45, 1fr);*/
     position: relative;
     background: #333;
     border-radius: 10px;
@@ -16,13 +14,20 @@
     height: 60vh;
 }
 
-.wordfield {
+#wordfield {
     display: flex;
     justify-content: center;
     justify-self: center;
     margin: 5px;
     margin-left: 10px;
     width: 60%;
+}
+
+.score {
+    display: flex;
+    justify-content: space-evenly;
+    font-weight: 600;
+    text-align: center;
 }
 
 .word {
