@@ -3,6 +3,7 @@ var gameover = false;
 
 socketio.on("quit-game-server", function(data) {
     socketio.emit("quit-game-ack");
+    gameover = true;
     if (uname !== data.who_quit) {
         dbox = createDialogBox(data.who_quit+" has quit the game, you win!");
         dbox.ok.addEventListener('click', () => {
