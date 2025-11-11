@@ -287,7 +287,6 @@ class typwarsState():
             self._tcount = 1
         if (self._tcount % (11-self.speed) == 0):
             self.tick_words()
-            self.i+=1
     def tick_words(self):
         delwords = []
         for word in self.screen_words:
@@ -295,6 +294,8 @@ class typwarsState():
             if self.screen_words[word][0] <= 0:
                 # word reached bottom !
                 delwords.append(word)
+        if delwords:
+            self.life_lost = len(delwords)
         for w in delwords:
             self.lives-=1
             del self.screen_words[w]
@@ -313,13 +314,11 @@ class typwarsGame(baseGame):
         self.p1.new_word("Red")
         self.p2.new_word("Violets")
         self.p2.new_word("Blue")
-        self.loopthread = threading.Thread(target=self.run_loop)
         self.stopgame = threading.Event()
-        self.gameover = False
         with open("static/data/words.txt","r") as f:
             for i in f:
                 self.dictwords.append(i[:-1].lower())
-        self.loopthread.start()
+        self.loopthread = socketio.start_background_task(target=self.run_loop) # Required to send emits from loopthread
     def get_state(self,user):
         if self.player1 == user:
             state = self.p1.get_state()
@@ -335,19 +334,26 @@ class typwarsGame(baseGame):
         while not self.stopgame.is_set():
             self.p1.tick()
             self.p2.tick()
+            if (hasattr(self.p1,'life_lost')):
+                self.life_lost(self.player1, self.p1.life_lost)
+                del self.p1.life_lost
+            elif (hasattr(self.p2,'life_lost')):
+                self.life_lost(self.player2, self.p2.life_lost)
+                del self.p2.life_lost
             if (self.p1.isdead() and self.p2.isdead()):
                 # tied!
-                self.endstate = ['tied']
+                self.endstate = {'state':'tie'}
                 break
             elif self.p1.isdead():
-                self.endstate = ['win','p2']
+                self.endstate = {'state':'win', 'winner':self.player2}
                 break
             elif self.p2.isdead():
-                self.endstate = ['win','p1']
+                self.endstate = {'state':'win', 'winner':self.player1}
                 break
-            time.sleep(0.1)
+            socketio.sleep(0.1)
         # Game loop ends = game over
-        self.gameover = True
+        if self.endstate.get('state') != 'quit':
+            socketio.emit('tw-gameover', self.endstate, room=self.get_id())
     def word_typed(self,user,word):
         if self.player1 == user:
             words = self.p1.get_screen_words()
@@ -358,7 +364,7 @@ class typwarsGame(baseGame):
             elif word in self.dictwords:
                 self.p1.sent_word()
                 vals = self.p2.new_word(word,True)
-                self.send_word(self.player2,word,vals) # send clientside
+                self.send_word(self.player2,word,vals) # send dict word clientside to p2
                 return True
             else:
                 return False
@@ -371,16 +377,18 @@ class typwarsGame(baseGame):
             elif word in self.dictwords:
                 self.p2.sent_word()
                 vals = self.p1.new_word(word,True)
-                self.send_word(self.player1,word,vals) # send clientside
+                self.send_word(self.player1,word,vals) # send dict word clientside to p1
                 return True
             else:
                 return False
     def send_word(self,user,word,vals):
         socketio.emit('tw-word-get', { 'user':user, 'word':word, 'vals':vals }, room=self.get_id())
+    def life_lost(self,user,lives):
+        socketio.emit('tw-life-lost', { 'user':user, 'lives':lives }, room=self.get_id())
     def quit_game(self):
         self.stopgame.set()
         self.loopthread.join()
-        self.endstate = ['quit']
+        self.endstate = {'state':'quit'}
 
 # ------------------------------
 #   Main URL Routes

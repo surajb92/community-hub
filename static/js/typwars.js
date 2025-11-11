@@ -1,9 +1,25 @@
 var looper;
+var division=6;
+var tick=10;
 
 socketio.on('tw-opp-word', function(data) {
     if (data.user === uname)
         return;
     score_up(2,true);
+});
+
+socketio.on('tw-life-lost', function(data) {
+    if (data.user === uname){
+        const lives = document.getElementById('your_lives');
+        var mylives = parseInt(lives.innerHTML);
+        mylives-=data.lives;
+        lives.innerHTML = mylives;
+    } else {
+        const lives = document.getElementById('opp_lives');
+        var opplives = parseInt(lives.innerHTML);
+        opplives-=data.lives;
+        lives.innerHTML = opplives;
+    }
 });
 
 socketio.on('tw-word-get', function(data) {
@@ -14,7 +30,49 @@ socketio.on('tw-word-get', function(data) {
     score_up(10,true);
 });
 
+socketio.on('tw-gameover', function(data) {
+    clearInterval(looper);
+    if (data.state === "tie")
+        createDialogBox("Game tied, wow!");
+    else if (data.winner === uname)
+        createDialogBox("You win!");
+    else
+        createDialogBox("You lose!");
+    socketio.emit("quit-game-ack");
+    document.getElementById('goback').classList.remove('hidden');
+});
+
+function set_params() {
+    const width = window.screen.width;
+    tick = document.getElementById('gamefield').offsetHeight/45;
+    if (width/8 >= 150)
+        division = 6;
+    else if (width/8 >= 130)
+        division = 5;
+    else if (width/8 >= 100)
+        division = 4;
+    else
+        division = 3;
+}
+
+function calc_gap(col) {
+    var dis=col; 
+    if (col > division)
+        dis = col-division;
+    switch (division) {
+        case 6:
+            return (dis*150);
+        case 5:
+            return (dis*130);
+        case 4:
+            return (dis*100);
+        case 3:
+            return (dis*75);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    set_params(); // Set movement & spawn parameters according to screen size
     document.getElementById('your_lives').innerHTML = field['lives'];
     document.getElementById('your_score').innerHTML = field['score'];
     document.getElementById('opp_lives').innerHTML = field['opplives'];
@@ -23,8 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
     for (word in field['words']) {
         spawn_word(word,field['words'][word]);
     }
-    const wfield = document.getElementById('wordfield');
-    wfield.addEventListener('keydown', function (event) {
+    document.getElementById('wordfield').addEventListener('keydown', function (event) {
         if (event.key === "Enter") {
             word_typed(this);
         } else {
@@ -37,14 +94,13 @@ function spawn_word(word,wordvals) {
     const garea = document.getElementById('gamefield');
     const c = document.createElement('div');
     c.classList = 'word';
-    c.id = 'scr-'+word;
-    c.innerHTML = word;
+    c.id = 'scr-'+word.toLowerCase();
+    c.innerHTML = word.toLowerCase();
     var h = (45-wordvals[0]);
-    c.style.top = String(h*10)+'px';
-    c.style.left = String(wordvals[1]*100)+'px';
+    c.style.top = String(h*tick)+'px';
+    c.style.left = String(calc_gap(wordvals[1]))+'px';
     c.dataset.height = h;
     c.dataset.word = word;
-    console.log(wordvals[0],' ',wordvals[1]);
     garea.appendChild(c);
 }
 
@@ -57,8 +113,8 @@ function word_typed(wfield) {
     socketio.emit('tw-word-typed', { 'word':word }, (response) => {
         if (response.status) {
             wfield.value = '';
-            if (document.getElementById('scr-'+word)) {
-                document.getElementById('scr-'+word).remove();
+            if (document.getElementById('scr-'+word.toLowerCase())) {
+                document.getElementById('scr-'+word.toLowerCase()).remove();
                 score_up(2);
             } else {
                 score_up(10);
@@ -77,23 +133,18 @@ function score_up(score,opp=false) {
 }
 
 function game_loop() {
-    const gkids = Array.from(document.getElementById('gamefield').children);
-    for (w of gkids) {
-        var height = parseInt(w.dataset.height);
-        height+=1;
-        w.dataset.height = height;
-        w.style.top = String((height)*10)+'px';
-        var word = w.dataset.word;
-        field['words'][word][0]-=1;
-        if ((45-height) <= 0) {
-            // word reached bottom
-            w.remove();
-            const lives = document.getElementById('your_lives');
-            var mylives = parseInt(lives.innerHTML);
-            mylives-=1;
-            lives.innerHTML = mylives;
-            if (mylives <= 0)
-                console.log('gameover');
+    if (!gameover) {
+        const gkids = Array.from(document.getElementById('gamefield').children);
+        for (w of gkids) {
+            var height = parseInt(w.dataset.height);
+            height+=1;
+            w.dataset.height = height;
+            w.style.top = String(height*tick)+'px';
+            var word = w.dataset.word;
+            field['words'][word][0]-=1;
+            if ((45-height) <= 0) { // word reached bottom
+                w.remove();
+            }
         }
     }
 }
