@@ -81,7 +81,9 @@ document.addEventListener('DOMContentLoaded', () => {
     for (word in field['words']) {
         spawn_word(word,field['words'][word]);
     }
-    document.getElementById('wordfield').addEventListener('keydown', function (event) {
+    const wordfield = document.getElementById('wordfield');
+    wordfield.focus();
+    wordfield.addEventListener('keyup', function (event) {
         if (event.key === "Enter") {
             word_typed(this);
         } else {
@@ -97,15 +99,26 @@ function spawn_word(word,wordvals) {
     c.id = 'scr-'+word.toLowerCase();
     c.innerHTML = word.toLowerCase();
     var h = (45-wordvals[0]);
-    c.style.top = String(h*tick)+'px';
-    c.style.left = String(calc_gap(wordvals[1]))+'px';
+    c.style.top = `${h*tick}+px`;
+    c.style.left = `${calc_gap(wordvals[1])}px`;
     c.dataset.height = h;
-    c.dataset.word = word;
+    c.dataset.word = word.toLowerCase();
     garea.appendChild(c);
 }
 
-function word_highlight(wfield,word) {
-    word = wfield.value;
+function word_highlight(wfield) {
+    const word = wfield.value.toLowerCase(); //+kpressed).toLowerCase();
+    const gkids = Array.from(document.getElementById('gamefield').children);
+    for (w of gkids) {
+        const subs = w.dataset.word.slice(0,word.length);
+        const rest = w.dataset.word.slice(word.length);
+        console.log(subs,' ',rest,' ',word,' ',subs===word);
+        if (subs === word) {
+            w.innerHTML = `<span class="highlight">${subs}</span>${rest}`;
+        } else {
+            w.innerHTML = w.dataset.word;
+        }
+    }
 }
 
 function word_typed(wfield) {
@@ -139,7 +152,7 @@ function game_loop() {
             var height = parseInt(w.dataset.height);
             height+=1;
             w.dataset.height = height;
-            w.style.top = String(height*tick)+'px';
+            w.style.top = `${height*tick}px`;
             var word = w.dataset.word;
             field['words'][word][0]-=1;
             if ((45-height) <= 0) { // word reached bottom

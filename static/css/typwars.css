@@ -32,4 +32,11 @@
 
 .word {
     position: absolute;
+    font-size: 25px;
+}
+
+.highlight {
+    font-size: 25px;
+    color: rgb(0, 200, 0);
+    text-shadow: 0 0 10px rgb(0, 90, 0);
 }
