@@ -2,42 +2,27 @@ var looper;
 var division=6;
 var tick=10;
 
-socketio.on('tw-opp-word', function(data) {
-    if (data.user === uname)
-        return;
-    score_up(2,true);
-});
-
 socketio.on('tw-life-lost', function(data) {
-    if (data.user === uname){
-        const lives = document.getElementById('your_lives');
-        var mylives = parseInt(lives.innerHTML);
-        mylives-=data.lives;
-        lives.innerHTML = mylives;
-    } else {
-        const lives = document.getElementById('opp_lives');
-        var opplives = parseInt(lives.innerHTML);
-        opplives-=data.lives;
-        lives.innerHTML = opplives;
-    }
+    const lives = document.getElementById('your_lives');
+    var mylives = parseInt(lives.innerHTML);
+    mylives-=data.lives;
+    lives.innerHTML = mylives;
 });
 
 socketio.on('tw-word-get', function(data) {
-    if (data.user !== uname)
-        return;
     field['words'][data.word] = data.vals;
     spawn_word(data.word,data.vals);
-    score_up(10,true);
+});
+
+socketio.on('tw-speed-change', function(data) {
+    field['speed'] = data.speed;
+    clearInterval(looper);
+    looper = setInterval(game_loop,(11-data.speed)*100);
 });
 
 socketio.on('tw-gameover', function(data) {
     clearInterval(looper);
-    if (data.state === "tie")
-        createDialogBox("Game tied, wow!");
-    else if (data.winner === uname)
-        createDialogBox("You win!");
-    else
-        createDialogBox("You lose!");
+    createDialogBox(`Game over!<br>Score: ${data.score}`);
     socketio.emit("quit-game-ack");
     document.getElementById('goback').classList.remove('hidden');
 });
@@ -75,8 +60,6 @@ document.addEventListener('DOMContentLoaded', () => {
     set_params(); // Set movement & spawn parameters according to screen size
     document.getElementById('your_lives').innerHTML = field['lives'];
     document.getElementById('your_score').innerHTML = field['score'];
-    document.getElementById('opp_lives').innerHTML = field['opplives'];
-    document.getElementById('opp_score').innerHTML = field['oppscore'];
     looper = setInterval(game_loop,(11-field['speed'])*100);
     for (word in field['words']) {
         spawn_word(word,field['words'][word]);
@@ -126,12 +109,8 @@ function word_typed(wfield) {
     socketio.emit('tw-word-typed', { 'word':word }, (response) => {
         if (response.status) {
             wfield.value = '';
-            if (document.getElementById('scr-'+word.toLowerCase())) {
-                document.getElementById('scr-'+word.toLowerCase()).remove();
-                score_up(2);
-            } else {
-                score_up(10);
-            }
+            document.getElementById('scr-'+word.toLowerCase()).remove();
+            score_up(10);
         }
     });
 }

@@ -1,7 +1,6 @@
 import os
 import random
 import threading
-import time
 
 from sys import exit
 from string import ascii_letters
@@ -118,7 +117,7 @@ def cdcheck():
 # ------------------------------
 
 class baseGame():
-    def __init__(self, g_id, game, host, peer):
+    def __init__(self, g_id, game, host, peer=None):
         self.gameid = g_id
         self.game = game
         self.player1 = host
@@ -263,6 +262,8 @@ class typwarsState():
         return self.screen_words
     def get_score(self):
         return self.score
+    def get_speed(self):
+        return self.speed
     def get_lives(self):
         return self.lives
     def set_new_row(self):
@@ -277,8 +278,14 @@ class typwarsState():
     def clear_word(self,word):
         self.score+=2
         del self.screen_words[word]
+    def clear_word_sp(self,word):
+        self.score+=10
+        del self.screen_words[word]
     def sent_word(self):
         self.score+=10
+    def speed_up(self):
+        if self.speed <= 10:
+            self.speed+=1
     def isdead(self):
         return self.dead
     def tick(self):
@@ -305,15 +312,95 @@ class typwarsState():
     def get_state(self):
         return { 'words': self.screen_words, 'speed': self.speed, 'score': self.score, 'lives': self.lives }
 
+class wordTicker():
+    def __init__(self,maxtick=300):
+        self.wordlist = {}
+        self.maxtick = maxtick
+    def add(self,word):
+        self.wordlist[word]=self.maxtick
+    def check(self,word):
+        return True if word in self.wordlist else False
+    def tick(self):
+        delwords = []
+        for word in self.wordlist:
+            self.wordlist[word]-=1
+            if self.wordlist[word] <= 0:
+                delwords.append(word)
+        for w in delwords:
+            del self.wordlist[w]
+
+class typwarsGameSP(baseGame):
+    def game_start(self):
+        self.dictwords = []
+        self.maxwordlen = 5
+        self.difficulty = 0
+        self.milestones = [100,200,300,500,750,1000,1500,2000,2500,3000]
+        self.twstate = typwarsState()
+        self.usedwords = wordTicker()
+        self.stopgame = threading.Event()
+        with open("static/data/words.txt","r") as f:
+            for i in f:
+                self.dictwords.append(i[:-1].lower())
+        while len(self.twstate.get_screen_words()) < 4:
+            self.spawn_word()
+        self.loopthread = socketio.start_background_task(target=self.run_loop) # Required to send emits from loopthread
+    def get_state(self):
+        return self.twstate.get_state()
+    def spawn_word(self):
+        word = random.choice(self.dictwords)
+        while self.usedwords.check(word) or len(word) > self.maxwordlen:
+            word = random.choice(self.dictwords)
+        self.usedwords.add(word)
+        vals = self.twstate.new_word(word)
+        return [word,vals]
+    def adjust_diff(self):
+        score = self.twstate.get_score()
+        if score >= 100 and score%100 == 0:
+            self.maxwordlen = 5 + score/100
+        if self.difficulty < 10 and score >= self.milestones[self.difficulty]:
+            self.difficulty+=1
+            self.twstate.speed_up()
+            socketio.emit('tw-speed-change', { 'speed':self.twstate.get_speed() }, room=self.get_id()) 
+    def run_loop(self):
+        # Serverside game loop
+        while not self.stopgame.is_set():
+            self.twstate.tick()
+            self.usedwords.tick()
+            if (hasattr(self.twstate,'life_lost')):
+                self.life_lost(self.twstate.life_lost)
+                del self.twstate.life_lost
+            if (self.twstate.isdead()):
+                self.endstate = { 'state':'gameover', 'score': self.twstate.get_score() }
+                break
+            elif len(self.twstate.get_screen_words()) < 4:
+                w = self.spawn_word()
+                self.send_word(w[0],w[1])
+            self.adjust_diff()
+            socketio.sleep(0.1)
+        # Game loop ends = game over
+        if self.endstate.get('state') != 'quit':
+            socketio.emit('tw-gameover', self.endstate, room=self.get_id())
+    def word_typed(self,user,word):
+        words = self.twstate.get_screen_words()
+        if word in words:
+            self.twstate.clear_word_sp(word)
+            return True
+        else:
+            return False
+    def send_word(self,word,vals):
+        socketio.emit('tw-word-get', { 'word':word, 'vals':vals }, room=self.get_id())
+    def life_lost(self,lives):
+        socketio.emit('tw-life-lost', { 'lives':lives }, room=self.get_id())
+    def quit_game(self):
+        self.endstate = {'state':'quit'}
+        self.stopgame.set()
+        self.loopthread.join()
+
 class typwarsGame(baseGame):
     def game_start(self):
         self.dictwords = []
         self.p1 = typwarsState()
         self.p2 = typwarsState()
-        self.p1.new_word("Roses")
-        self.p1.new_word("Red")
-        self.p2.new_word("Violets")
-        self.p2.new_word("Blue")
         self.stopgame = threading.Event()
         with open("static/data/words.txt","r") as f:
             for i in f:
@@ -386,9 +473,9 @@ class typwarsGame(baseGame):
     def life_lost(self,user,lives):
         socketio.emit('tw-life-lost', { 'user':user, 'lives':lives }, room=self.get_id())
     def quit_game(self):
+        self.endstate = {'state':'quit'}
         self.stopgame.set()
         self.loopthread.join()
-        self.endstate = {'state':'quit'}
 
 # ------------------------------
 #   Main URL Routes
@@ -411,13 +498,10 @@ def home():
     uname = session.get('uname')
     utype = session.get('utype')
     lgn = login_form()
-    if request.method == "POST":
-        if 'room-btn' in request.form:
-            return redirect(url_for('chatroom'))
-        if lgn.validate_on_submit():
-            session['uname'] = lgn.username.data
-            session['utype'] = 'registered'
-            return redirect(url_for('home'))
+    if request.method == "POST" and lgn.validate_on_submit():
+        session['uname'] = lgn.username.data
+        session['utype'] = 'registered'
+        return redirect(url_for('home'))
     if not uname:
         while True:
             r = [random.choice(ascii_letters) for _ in range(5)]
@@ -429,7 +513,6 @@ def home():
                 session['utype'] = 'guest'
                 session['room'] = 'general'
                 guests.append(uname)
-                # online_users.append(uname)
                 utype = 'guest'
                 break
     return render_template('index.html',user=uname,usertype=utype,loginform=lgn)
@@ -501,7 +584,25 @@ def typwars_page():
     elif not game:
         del session['game']
         return redirect(url_for('home'))
-    return render_template("typwars.html",user=uname,field=game.get_state(uname))
+    return render_template("typwars.html",user=uname,twoplayer=True,field=game.get_state(uname))
+
+@app.route('/game/typwars_sp', methods=["GET", "POST"])
+def typwars_sp_page():
+    uname = session.get('uname')
+    g_id = session.get('game')
+    game = games.get(g_id)
+    if not g_id:
+        gameid = uuid4()
+        while gameid in games.keys():
+            gameid = uuid4()
+        games[gameid] = typwarsGameSP(gameid,"typwars_sp",uname)
+        session['game'] = gameid
+        game = games.get(gameid)
+        game.game_start()
+    elif not game:
+        del session['game']
+        return redirect(url_for('home'))
+    return render_template("typwars.html",user=uname,twoplayer=False,field=game.get_state())
 
 # ------------------------------
 #   API-only Routes

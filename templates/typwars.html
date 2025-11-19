@@ -13,7 +13,11 @@ const field = {{ field | tojson }};
 </script>
 <script src="{{ url_for('static', filename='js/_game_methods.js') }}"></script>
 <script src="{{ url_for('static', filename='js/_ui_methods.js') }}"></script>
+{% if twoplayer %}
 <script src="{{ url_for('static', filename='js/typwars.js') }}"></script>
+{% else %}
+<script src="{{ url_for('static', filename='js/typwars_sp.js') }}"></script>
+{% endif  %}
 {% endblock %}
 
 {% block body %}
@@ -21,8 +25,10 @@ const field = {{ field | tojson }};
 <h3 class="score">
     <div>Your score<div id="your_score">0</div></div>
     <div>Your Lives<div id="your_lives">3</div></div>
+    {% if twoplayer %}
     <div style="margin-left:100px;">Opponent score<div id="opp_score">0</div></div>
     <div>Opponent Lives<div id="opp_lives">3</div></div>
+    {% endif %}
 </h3>
 <div id="gamecontainer">
     <div id="gamefield"></div>
