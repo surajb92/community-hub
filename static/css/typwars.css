@@ -35,8 +35,11 @@
     font-size: 25px;
 }
 
+.word.enemy {
+    color: rgb(200, 0, 0);
+}
+
 .highlight {
-    font-size: 25px;
     color: rgb(0, 200, 0);
-    text-shadow: 0 0 10px rgb(0, 90, 0);
+    text-shadow: 0 0 20px rgb(0, 100, 0);
 }
