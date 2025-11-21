@@ -1,4 +1,3 @@
-var looper;
 var division=6;
 var tick=10;
 
@@ -30,8 +29,12 @@ socketio.on('tw-word-get', function(data) {
     score_up(10,true);
 });
 
+socketio.on('tw-speed-change', function(data) {
+    field['speed'] = data.speed;
+});
+
 socketio.on('tw-gameover', function(data) {
-    clearInterval(looper);
+    gameover=true;
     if (data.state === "tie")
         createDialogBox("Game tied, wow!");
     else if (data.winner === uname)
@@ -77,7 +80,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('your_score').innerHTML = field['score'];
     document.getElementById('opp_lives').innerHTML = field['opplives'];
     document.getElementById('opp_score').innerHTML = field['oppscore'];
-    looper = setInterval(game_loop,(11-field['speed'])*100);
     for (word in field['words']) {
         spawn_word(word,field['words'][word]);
     }
@@ -90,6 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
             word_highlight(this);
         }
     });
+    game_loop();
 });
 
 function spawn_word(word,wordvals) {
@@ -112,7 +115,6 @@ function word_highlight(wfield) {
     for (w of gkids) {
         const subs = w.dataset.word.slice(0,word.length);
         const rest = w.dataset.word.slice(word.length);
-        console.log(subs,' ',rest,' ',word,' ',subs===word);
         if (subs === word) {
             w.innerHTML = `<span class="highlight">${subs}</span>${rest}`;
         } else {
@@ -146,18 +148,19 @@ function score_up(score,opp=false) {
 }
 
 function game_loop() {
-    if (!gameover) {
-        const gkids = Array.from(document.getElementById('gamefield').children);
-        for (w of gkids) {
-            var height = parseInt(w.dataset.height);
-            height+=1;
-            w.dataset.height = height;
-            w.style.top = `${height*tick}px`;
-            var word = w.dataset.word;
-            field['words'][word][0]-=1;
-            if ((45-height) <= 0) { // word reached bottom
-                w.remove();
-            }
+    const gkids = Array.from(document.getElementById('gamefield').children);
+    for (w of gkids) {
+        var height = parseInt(w.dataset.height);
+        height+=1;
+        w.dataset.height = height;
+        w.style.top = `${height*tick}px`;
+        var word = w.dataset.word;
+        field['words'][word][0]-=1;
+        if ((45-height) <= 0) { // word reached bottom
+            w.remove();
         }
+    }
+    if (!gameover) {
+        setTimeout(game_loop, (10-field['speed'])*100);
     }
 }
