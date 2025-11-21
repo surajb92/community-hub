@@ -283,14 +283,16 @@ class typwarsState():
         if not self.cols:
             self.set_new_row()
         return wdata
-    def clear_word(self,word):
-        self.score+=2
+    def score_up(self,score):
+        self.score+=score
+        if self.score < 0:
+            self.score = 0
+    def clear_word(self,word,sp=False):
+        if sp:
+            self.score_up(10)
+        else:
+            self.score_up(2)
         del self.screen_words[word]
-    def clear_word_sp(self,word):
-        self.score+=10
-        del self.screen_words[word]
-    def sent_word(self):
-        self.score+=10
     def speed_up(self):
         if self.speed < 9:
             self.speed+=1
@@ -389,7 +391,7 @@ class typwarsGameSP(baseGame):
     def word_typed(self,user,word):
         words = self.twstate.get_screen_words()
         if word in words:
-            self.twstate.clear_word_sp(word)
+            self.twstate.clear_word(word,True)
             return True
         else:
             return False
@@ -454,9 +456,11 @@ class typwarsGame(baseGame):
             self.p2.tick()
             self.usedwords.tick()
             if (hasattr(self.p1,'life_lost')):
+                self.p1.score_up(-100*self.p1.life_lost)
                 self.life_lost(self.player1, self.p1.life_lost)
                 del self.p1.life_lost
             if (hasattr(self.p2,'life_lost')):
+                self.p2.score_up(-100*self.p2.life_lost)
                 self.life_lost(self.player2, self.p2.life_lost)
                 del self.p2.life_lost
             if (self.p1.isdead() and self.p2.isdead()):
@@ -489,7 +493,7 @@ class typwarsGame(baseGame):
             socketio.emit('tw-opp-word', {'user':player.get_uname()}, room=self.get_id())
             return True
         elif word in self.dictwords and not self.usedwords.check(word):
-            player.sent_word()
+            player.score_up(10)
             vals = opp.new_word(word,True)
             self.usedwords.add(word)
             self.send_word(opp.get_uname(),word,vals) # send dict word clientside to opponent
