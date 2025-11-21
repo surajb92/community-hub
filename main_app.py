@@ -249,15 +249,19 @@ class connect4Game(baseGame):
         return state
 
 class typwarsState():
-    def __init__(self):
+    def __init__(self,user):
         self.screen_words = {}
+        self.maxwordlen = 5
         self._tcount = 1
-        self.speed = 1
+        self.player = user
+        self.speed = 0
         self.score = 0
         self.lives = 3
         self.dead = False
         self.set_new_row()
         self.i=0
+    def get_uname(self):
+        return self.player
     def get_screen_words(self):
         return self.screen_words
     def get_score(self):
@@ -269,6 +273,10 @@ class typwarsState():
     def set_new_row(self):
         self.cols = [_ for _ in range(1,6+1)]
         random.shuffle(self.cols)
+    def set_word_length(self,wlen):
+        self.maxwordlen = wlen
+    def get_word_length(self):
+        return self.maxwordlen
     def new_word(self,word,opp=False):
         wdata = [45,self.cols.pop(),opp]
         self.screen_words[word.lower()] = wdata
@@ -284,7 +292,7 @@ class typwarsState():
     def sent_word(self):
         self.score+=10
     def speed_up(self):
-        if self.speed <= 10:
+        if self.speed < 9:
             self.speed+=1
     def isdead(self):
         return self.dead
@@ -292,7 +300,7 @@ class typwarsState():
         self._tcount+=1
         if self._tcount > 10:
             self._tcount = 1
-        if (self._tcount % (11-self.speed) == 0):
+        if (self._tcount % (10-self.speed) == 0):
             self.tick_words()
     def tick_words(self):
         delwords = []
@@ -332,35 +340,34 @@ class wordTicker():
 class typwarsGameSP(baseGame):
     def game_start(self):
         self.dictwords = []
-        self.maxwordlen = 5
-        self.difficulty = 0
         self.milestones = [100,200,300,500,750,1000,1500,2000,2500,3000]
-        self.twstate = typwarsState()
+        self.twstate = typwarsState(self.player1)
         self.usedwords = wordTicker()
         self.stopgame = threading.Event()
         with open("static/data/words.txt","r") as f:
             for i in f:
                 self.dictwords.append(i[:-1].lower())
         while len(self.twstate.get_screen_words()) < 4:
-            self.spawn_word()
+            self.spawn_word(False)
         self.loopthread = socketio.start_background_task(target=self.run_loop) # Required to send emits from loopthread
     def get_state(self):
         return self.twstate.get_state()
-    def spawn_word(self):
+    def spawn_word(self,send=True):
         word = random.choice(self.dictwords)
-        while self.usedwords.check(word) or len(word) > self.maxwordlen:
+        while self.usedwords.check(word) or len(word) > self.twstate.get_word_length():
             word = random.choice(self.dictwords)
         self.usedwords.add(word)
         vals = self.twstate.new_word(word)
-        return [word,vals]
+        if send:
+            self.send_word(word,vals)
     def adjust_diff(self):
         score = self.twstate.get_score()
+        speed = self.twstate.get_speed()
         if score >= 100 and score%100 == 0:
-            self.maxwordlen = 5 + score/100
-        if self.difficulty < 10 and score >= self.milestones[self.difficulty]:
-            self.difficulty+=1
+            self.twstate.set_word_length(5 + score/100)
+        if speed < 10 and score >= self.milestones[speed]:
             self.twstate.speed_up()
-            socketio.emit('tw-speed-change', { 'speed':self.twstate.get_speed() }, room=self.get_id()) 
+            socketio.emit('tw-speed-change', { 'speed':self.twstate.get_speed() }, room=self.get_id())
     def run_loop(self):
         # Serverside game loop
         while not self.stopgame.is_set():
@@ -373,8 +380,7 @@ class typwarsGameSP(baseGame):
                 self.endstate = { 'state':'gameover', 'score': self.twstate.get_score() }
                 break
             elif len(self.twstate.get_screen_words()) < 4:
-                w = self.spawn_word()
-                self.send_word(w[0],w[1])
+                self.spawn_word()
             self.adjust_diff()
             socketio.sleep(0.1)
         # Game loop ends = game over
@@ -399,12 +405,18 @@ class typwarsGameSP(baseGame):
 class typwarsGame(baseGame):
     def game_start(self):
         self.dictwords = []
-        self.p1 = typwarsState()
-        self.p2 = typwarsState()
+        self.p1 = typwarsState(self.player1)
+        self.p2 = typwarsState(self.player2)
+        self.milestones = [100,200,300,500,750,1000,1500,2000,2500,3000]
+        self.usedwords = wordTicker()
         self.stopgame = threading.Event()
         with open("static/data/words.txt","r") as f:
             for i in f:
                 self.dictwords.append(i[:-1].lower())
+        while (len(self.p1.get_screen_words()) < 2):
+            self.spawn_word(self.p1,False)
+        while (len(self.p2.get_screen_words()) < 2):
+            self.spawn_word(self.p2,False)
         self.loopthread = socketio.start_background_task(target=self.run_loop) # Required to send emits from loopthread
     def get_state(self,user):
         if self.player1 == user:
@@ -416,15 +428,35 @@ class typwarsGame(baseGame):
             state['oppscore'] = self.p1.get_score()
             state['opplives'] = self.p1.get_lives()
         return state
+    def spawn_word(self,player,send=True):
+        word = random.choice(self.dictwords)
+        while self.usedwords.check(word) or len(word) > 2*player.get_speed()+5:
+            word = random.choice(self.dictwords)
+        self.usedwords.add(word)
+        vals = player.new_word(word)
+        if send:
+            self.send_word(player.get_uname(),word,vals,True)
+    def prevent_clear(self):
+        if len(self.p1.get_screen_words()) < 1:
+            self.spawn_word(self.p1)
+        if len(self.p2.get_screen_words()) < 1:
+            self.spawn_word(self.p2)
+    def adjust_diff(self,player):
+        score = player.get_score()
+        speed = player.get_speed()
+        if speed < 10 and score >= self.milestones[speed]:
+            player.speed_up()
+            socketio.emit('tw-speed-change', { 'user':player.get_uname(), 'speed':player.get_speed() }, room=self.get_id())
     def run_loop(self):
         # Serverside game loop
         while not self.stopgame.is_set():
             self.p1.tick()
             self.p2.tick()
+            self.usedwords.tick()
             if (hasattr(self.p1,'life_lost')):
                 self.life_lost(self.player1, self.p1.life_lost)
                 del self.p1.life_lost
-            elif (hasattr(self.p2,'life_lost')):
+            if (hasattr(self.p2,'life_lost')):
                 self.life_lost(self.player2, self.p2.life_lost)
                 del self.p2.life_lost
             if (self.p1.isdead() and self.p2.isdead()):
@@ -437,37 +469,33 @@ class typwarsGame(baseGame):
             elif self.p2.isdead():
                 self.endstate = {'state':'win', 'winner':self.player1}
                 break
+            self.adjust_diff(self.p1)
+            self.adjust_diff(self.p2)
+            self.prevent_clear() # Spawns a word for any player that clears the whole screen
             socketio.sleep(0.1)
         # Game loop ends = game over
         if self.endstate.get('state') != 'quit':
             socketio.emit('tw-gameover', self.endstate, room=self.get_id())
     def word_typed(self,user,word):
         if self.player1 == user:
-            words = self.p1.get_screen_words()
-            if word in words:
-                self.p1.clear_word(word)
-                socketio.emit('tw-opp-word', {'user':self.player1}, room=self.get_id())
-                return True
-            elif word in self.dictwords:
-                self.p1.sent_word()
-                vals = self.p2.new_word(word,True)
-                self.send_word(self.player2,word,vals) # send dict word clientside to p2
-                return True
-            else:
-                return False
+            player = self.p1
+            opp = self.p2
         else:
-            words = self.p2.get_screen_words()
-            if word in words:
-                self.p2.clear_word(word)
-                socketio.emit('tw-opp-word', {'user':self.player2}, room=self.get_id())
-                return True
-            elif word in self.dictwords:
-                self.p2.sent_word()
-                vals = self.p1.new_word(word,True)
-                self.send_word(self.player1,word,vals) # send dict word clientside to p1
-                return True
-            else:
-                return False
+            player = self.p2
+            opp = self.p1
+        words = player.get_screen_words()
+        if word in words:
+            player.clear_word(word)
+            socketio.emit('tw-opp-word', {'user':player.get_uname()}, room=self.get_id())
+            return True
+        elif word in self.dictwords and not self.usedwords.check(word):
+            player.sent_word()
+            vals = opp.new_word(word,True)
+            self.usedwords.add(word)
+            self.send_word(opp.get_uname(),word,vals) # send dict word clientside to opponent
+            return True
+        else:
+            return False
     def send_word(self,user,word,vals):
         socketio.emit('tw-word-get', { 'user':user, 'word':word, 'vals':vals }, room=self.get_id())
     def life_lost(self,user,lives):

@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function spawn_word(word,wordvals) {
     const garea = document.getElementById('gamefield');
     const c = document.createElement('div');
-    c.classList = 'word';
+    c.classList = wordvals[2] ? 'word enemy':'word';
     c.id = 'scr-'+word.toLowerCase();
     c.innerHTML = word.toLowerCase();
     var h = (45-wordvals[0]);
