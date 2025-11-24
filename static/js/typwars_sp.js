@@ -106,9 +106,9 @@ function word_highlight(wfield) {
 
 function word_typed(wfield) {
     word = wfield.value;
+    wfield.value = '';
     socketio.emit('tw-word-typed', { 'word':word }, (response) => {
         if (response.status) {
-            wfield.value = '';
             document.getElementById('scr-'+word.toLowerCase()).remove();
             score_up(10);
         }
