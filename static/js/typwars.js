@@ -8,17 +8,23 @@ socketio.on('tw-opp-word', function(data) {
 });
 
 socketio.on('tw-life-lost', function(data) {
+    let score;
+    let lives;
     if (data.user === uname){
-        const lives = document.getElementById('your_lives');
-        var mylives = parseInt(lives.innerHTML);
-        mylives-=data.lives;
-        lives.innerHTML = mylives;
+        lives = document.getElementById('your_lives');
+        score = document.getElementById('your_score');
     } else {
-        const lives = document.getElementById('opp_lives');
-        var opplives = parseInt(lives.innerHTML);
-        opplives-=data.lives;
-        lives.innerHTML = opplives;
+        lives = document.getElementById('opp_lives');
+        score = document.getElementById('opp_score');
     }
+    var _lives = parseInt(lives.innerHTML);
+    var _score = parseInt(score.innerHTML);
+    _lives-=data.lives;
+    _score-=(data.lives*100);
+    if(_score<0)
+        _score=0;
+    lives.innerHTML = _lives;
+    score.innerHTML = _score;
 });
 
 socketio.on('tw-word-get', function(data) {
