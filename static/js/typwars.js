@@ -38,9 +38,7 @@ socketio.on('tw-speed-change', function(data) {
 
 socketio.on('tw-gameover', function(data) {
     gameover=true;
-    if (data.state === "tie")
-        createDialogBox("Game tied, wow!");
-    else if (data.winner === uname)
+    if (data.winner === uname)
         createDialogBox("You win!");
     else
         createDialogBox("You lose!");

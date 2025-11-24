@@ -349,7 +349,7 @@ class typwarsGameSP(baseGame):
         with open("static/data/words.txt","r") as f:
             for i in f:
                 self.dictwords.append(i[:-1].lower())
-        while len(self.twstate.get_screen_words()) < 4:
+        while len(self.twstate.get_screen_words()) < 2:
             self.spawn_word(False)
         self.loopthread = socketio.start_background_task(target=self.run_loop) # Required to send emits from loopthread
     def get_state(self):
@@ -381,7 +381,9 @@ class typwarsGameSP(baseGame):
             if (self.twstate.isdead()):
                 self.endstate = { 'state':'gameover', 'score': self.twstate.get_score() }
                 break
-            elif len(self.twstate.get_screen_words()) < 4:
+            elif len(self.twstate.get_screen_words()) < 4 and self.twstate.get_speed() > 0:
+                self.spawn_word()
+            elif len(self.twstate.get_screen_words()) < 2:
                 self.spawn_word()
             self.adjust_diff()
             socketio.sleep(0.1)
@@ -437,7 +439,7 @@ class typwarsGame(baseGame):
         self.usedwords.add(word)
         vals = player.new_word(word)
         if send:
-            self.send_word(player.get_uname(),word,vals,True)
+            self.send_word(player.get_uname(),word,vals)
     def prevent_clear(self):
         if len(self.p1.get_screen_words()) < 1:
             self.spawn_word(self.p1)
@@ -464,8 +466,11 @@ class typwarsGame(baseGame):
                 self.life_lost(self.player2, self.p2.life_lost)
                 del self.p2.life_lost
             if (self.p1.isdead() and self.p2.isdead()):
-                # tied!
-                self.endstate = {'state':'tie'}
+                # Tied! Decide winner based on score.
+                if (self.p1.get_score() > self.p2.get_score()):
+                    self.endstate = {'state':'win', 'winner':self.player1}
+                else:
+                    self.endstate = {'state':'win', 'winner':self.player2}
                 break
             elif self.p1.isdead():
                 self.endstate = {'state':'win', 'winner':self.player2}
