@@ -3,9 +3,13 @@ var tick=10;
 
 socketio.on('tw-life-lost', function(data) {
     const lives = document.getElementById('your_lives');
-    var mylives = parseInt(lives.innerHTML);
-    mylives-=data.lives;
-    lives.innerHTML = mylives;
+    const score = document.getElementById('your_score');
+    var _lives = parseInt(lives.innerHTML);
+    var _score = parseInt(score.innerHTML);
+    _lives-=data.lives;
+    _score-=(data.lives)*100;
+    lives.innerHTML = _lives;
+    score.innerHTML = _score;
 });
 
 socketio.on('tw-word-get', function(data) {
