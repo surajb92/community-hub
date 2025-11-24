@@ -376,6 +376,7 @@ class typwarsGameSP(baseGame):
             self.twstate.tick()
             self.usedwords.tick()
             if (hasattr(self.twstate,'life_lost')):
+                self.twstate.score_up(-100*self.twstate.life_lost)
                 self.life_lost(self.twstate.life_lost)
                 del self.twstate.life_lost
             if (self.twstate.isdead()):
