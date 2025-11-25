@@ -300,8 +300,6 @@ class typwarsState():
         return self.dead
     def tick(self):
         self._tcount+=1
-        if self._tcount > 10:
-            self._tcount = 1
         if (self._tcount % (10-self.speed) == 0):
             self.tick_words()
     def tick_words(self):
