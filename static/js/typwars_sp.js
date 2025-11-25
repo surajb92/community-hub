@@ -8,6 +8,10 @@ socketio.on('tw-life-lost', function(data) {
     var _score = parseInt(score.innerHTML);
     _lives-=data.lives;
     _score-=(data.lives)*100;
+    if (_lives < 0)
+        _lives = 0;
+    if (_score < 0)
+        _score = 0;
     lives.innerHTML = _lives;
     score.innerHTML = _score;
 });
