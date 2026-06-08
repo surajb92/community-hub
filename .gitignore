@@ -1,6 +1,8 @@
-previously\ on\ dbz.txt
+dev_roadmap.txt
 .env
 .envv
+.venv/*
+venv/*
 .vscode/*
 flask_session/*
 *.pyc
