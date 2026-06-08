@@ -17,7 +17,8 @@ Implemented using flask & socketio backend with html+javascript frontend.
 
 ## Setting up Postgresql locally
 
-! NOTE : If you have your own DB set up in another location, you can ignore this section.
+> [!NOTE]
+> If you have your own DB set up in another location, you can ignore this section.
 
 1. Install postgresql.
 2. Initialize DB cluster with command "sudo -u postgres initdb --locale=C.UTF-8 --encoding=UTF8 -D /var/lib/postgres/data".
