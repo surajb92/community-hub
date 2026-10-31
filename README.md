@@ -116,8 +116,8 @@ Group=www-data
 UMask=0007
 WorkingDirectory=/<user>/community-hub
 Environment="PATH=/<user>/community-hub/.venv/bin"
-ExecStart=/<user>/community-hub/.venv/bin/gunicorn --worker-class gthread --threads 100 --workers 1 --bind unix:mysock.sock wsgi:app
-# ExecStart=/<user>/community-hub/.venv/bin/gunicorn --worker-class gthread --threads 100 --workers 1  --bind <ip_and_port_listening_to_nginx> wsgi:app
+ExecStart=/<user>/community-hub/.venv/bin/gunicorn --worker-class gthread --threads 100 --workers 1 --max-requests=1000 --bind unix:mysock.sock wsgi:app
+# ExecStart=/<user>/community-hub/.venv/bin/gunicorn --worker-class gthread --threads 100 --workers 1 --max-requests=1000 --bind <ip_and_port_listening_to_nginx> wsgi:app
 # ^ Use this instead, if your nginx server is on a different machine than your python deployment
 
 [Install]
